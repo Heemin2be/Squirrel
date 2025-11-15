@@ -1,2 +1,5 @@
 # Documentation folder
 documents/
+
+# macOS
+.DS_Store
