@@ -1,17 +1,20 @@
-// CreateOrderRequest.java
 package com.ptproject.back_sq.dto.order;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 
 @Getter
+@NoArgsConstructor
 public class CreateOrderRequest {
 
-    private int tableNumber;          // 5번 테이블
-    private List<Item> items;         // 메뉴 + 수량 목록
+    private Long tableId;
+    private List<OrderItemRequest> items;
 
     @Getter
-    public static class Item {
+    @NoArgsConstructor
+    public static class OrderItemRequest {
         private Long menuId;
         private int quantity;
     }

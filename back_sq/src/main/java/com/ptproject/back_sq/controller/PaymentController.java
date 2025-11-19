@@ -1,36 +1,25 @@
-// PaymentController.java
 package com.ptproject.back_sq.controller;
 
 import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
 import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
-import com.ptproject.back_sq.entity.order.Payment;
-import com.ptproject.back_sq.repository.PaymentRepository;
 import com.ptproject.back_sq.service.PaymentService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/payments")
+@RequiredArgsConstructor
+@RequestMapping("/api/orders/{orderId}/payments")
 @CrossOrigin(origins = "*")
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final PaymentRepository paymentRepository;
 
-    public PaymentController(PaymentService paymentService,
-                             PaymentRepository paymentRepository) {
-        this.paymentService = paymentService;
-        this.paymentRepository = paymentRepository;
-    }
-
+    // 👉 결제 요청 (POS)
     @PostMapping
-    public CreatePaymentResponse createPayment(@RequestBody CreatePaymentRequest request) {
-        return paymentService.createPayment(request);
-    }
-
-    @GetMapping
-    public List<Payment> getPayments() {
-        return paymentRepository.findAll();
+    public CreatePaymentResponse pay(
+            @PathVariable Long orderId,
+            @RequestBody CreatePaymentRequest request
+    ) {
+        return paymentService.createPayment(orderId, request);
     }
 }

@@ -6,8 +6,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class CreatePaymentRequest {
-
-    private PaymentMethod method;  // CARD / CASH
-    private int paidAmount;        // 손님이 낸 금액
+public class PaymentRequest {
+    private PaymentMethod method;
+    private int amount;
 }

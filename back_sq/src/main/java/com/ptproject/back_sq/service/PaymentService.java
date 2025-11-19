@@ -1,48 +1,66 @@
-// PaymentService.java
 package com.ptproject.back_sq.service;
 
 import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
 import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
-import com.ptproject.back_sq.entity.order.Order;
-import com.ptproject.back_sq.entity.order.OrderStatus;
-import com.ptproject.back_sq.entity.order.Payment;
+import com.ptproject.back_sq.entity.order.*;
 import com.ptproject.back_sq.repository.OrderRepository;
 import com.ptproject.back_sq.repository.PaymentRepository;
-import jakarta.transaction.Transactional;
+import com.ptproject.back_sq.repository.StoreTableRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class PaymentService {
 
-    private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
+    private final StoreTableRepository storeTableRepository;
 
-    public PaymentService(PaymentRepository paymentRepository,
-                          OrderRepository orderRepository) {
-        this.paymentRepository = paymentRepository;
-        this.orderRepository = orderRepository;
-    }
+    // 👉 결제 처리 (POS)
+    public CreatePaymentResponse createPayment(Long orderId, CreatePaymentRequest request) {
 
-    public CreatePaymentResponse createPayment(CreatePaymentRequest request) {
-        Order order = orderRepository.findById(request.getOrderId())
-                .orElseThrow(() -> new IllegalArgumentException("주문 없음: " + request.getOrderId()));
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. id=" + orderId));
 
-        // 이미 결제된 주문인지 체크 (간단히 상태로만)
         if (order.getStatus() == OrderStatus.PAID) {
             throw new IllegalStateException("이미 결제된 주문입니다.");
         }
 
-        // 총 금액 계산
-        int totalAmount = order.getOrderItems().stream()
-                .mapToInt(oi -> oi.getPrice() * oi.getQuantity())
+        int totalAmount = order.getItems().stream()
+                .mapToInt(item -> item.getOrderedPrice() * item.getQuantity())
                 .sum();
 
-        Payment payment = new Payment(order, request.getMethod(), totalAmount);
-        Payment saved = paymentRepository.save(payment);
+        if (request.getPaidAmount() < totalAmount) {
+            throw new IllegalArgumentException("받은 금액이 결제 금액보다 적습니다.");
+        }
 
-        order.changeStatus(OrderStatus.PAID); // 주문 상태 변경
+        int change = request.getPaidAmount() - totalAmount;
 
-        return new CreatePaymentResponse(saved.getId(), totalAmount);
+    Payment payment = new Payment(totalAmount, request.getMethod());
+        order.addPayment(payment);
+        order.complete();  // 상태 -> PAID
+
+        // 테이블 비우기
+        StoreTable table = order.getStoreTable();
+        table.empty();
+        storeTableRepository.save(table);
+
+        paymentRepository.save(payment);
+        orderRepository.save(order);
+
+        return CreatePaymentResponse.builder()
+                .paymentId(payment.getId())
+                .orderId(order.getId())
+                .method(payment.getMethod())
+                .totalAmount(totalAmount)
+                .paidAmount(request.getPaidAmount())
+                .change(change)
+                .paymentTime(payment.getPaymentTime())
+                .build();
     }
 }

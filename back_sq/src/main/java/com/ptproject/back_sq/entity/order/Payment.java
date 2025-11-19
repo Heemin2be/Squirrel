@@ -1,6 +1,5 @@
 package com.ptproject.back_sq.entity.order;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,28 +11,33 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table(name = "payment")
 public class Payment {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @JsonIgnore
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
-    private Order order;
+    @Column(nullable = false)
+    private LocalDateTime paymentTime;
+
+    // 총 결제 금액
+    @Column(name = "total_amount", nullable = false)
+    private int totalAmount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     private PaymentMethod method;
 
-    @Column(nullable = false)
-    private  int amount;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false, unique = true)
+    private Order order;
 
-    @Column(name = "paid_at", nullable = false)
-    private LocalDateTime paidAt;
-
-    public Payment(Order order, PaymentMethod method, int amount){
-        this.order = order;
+    public Payment(int totalAmount, PaymentMethod method) {
+        this.paymentTime = LocalDateTime.now();
+        this.totalAmount = totalAmount;
         this.method = method;
-        this.amount = amount;
-        this.paidAt = LocalDateTime.now();
+    }
+
+    public void setOrder(Order order) {
+        this.order = order;
     }
 }

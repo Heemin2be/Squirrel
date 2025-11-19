@@ -15,7 +15,21 @@ public class StoreTable {
     @Column(nullable = false)
     private int tableNumber;
 
-    public StoreTable(int tableNumber){
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TableStatus status = TableStatus.EMPTY;
+
+    public StoreTable(int tableNumber)
+    {
         this.tableNumber = tableNumber;
+        this.status = TableStatus.EMPTY;
+    }
+
+    public void occupy(){
+        this.status = TableStatus.OCCUPIED;
+    }
+
+    public void empty(){
+        this.status = TableStatus.EMPTY;
     }
 }
