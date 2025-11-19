@@ -5,13 +5,13 @@ import TableSelectionModal from "../components/TableSelectionModal";
 import "./KioskPage.css";
 
 // Image Imports
-import TosokjeonImg from '../assets/토속전.png';
-import SaladImg from '../assets/샐러드.png';
-import MukbabImg from '../assets/묵밥.png';
-import MukbossamImg from '../assets/묵보쌈.png';
-import BibimbapImg from '../assets/비빔밥.jpeg';
-import ImjatangImg from '../assets/임자탕.jpeg';
-import PajeonImg from '../assets/파전.jpeg';
+import TosokjeonImg from '../assets/tosokjeon.png';
+import SaladImg from '../assets/salad.png';
+import MukbabImg from '../assets/mukbap.png';
+import MukbossamImg from '../assets/mukbossam.png';
+import BibimbapImg from '../assets/bibimbap.jpeg';
+import ImjatangImg from '../assets/imjatang.jpeg';
+import PajeonImg from '../assets/pajeon.jpeg';
 
 
 // Placeholder data
