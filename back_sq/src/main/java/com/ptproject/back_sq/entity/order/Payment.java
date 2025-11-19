@@ -3,6 +3,8 @@ package com.ptproject.back_sq.entity.order;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import jakarta.persistence.PrePersist;
+import org.hibernate.boot.model.naming.IllegalIdentifierException;
 
 import java.time.LocalDateTime;
 
@@ -37,7 +39,17 @@ public class Payment {
         this.method = method;
     }
 
+    @PrePersist
+    public void onCreate(){
+        if(this.paymentTime == null){
+            this.paymentTime = LocalDateTime.now();
+        }
+    }
+
     public void setOrder(Order order) {
+        if(this.order != null && this.order != order){
+            throw new IllegalIdentifierException("Payment는 이미 다른 주문과 연결되어 있습니다.");
+        }
         this.order = order;
     }
 }

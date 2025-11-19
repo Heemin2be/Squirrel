@@ -35,4 +35,9 @@ public class OrderController {
             ) {
         return orderService.getOrders(status, date);
     }
+
+    @GetMapping("/{orderId}")
+    public CreateOrderResponse getOrder(@PathVariable Long orderId){
+        return orderService.getOrder(orderId);   // ✅ 여기만 수정!
+    }
 }

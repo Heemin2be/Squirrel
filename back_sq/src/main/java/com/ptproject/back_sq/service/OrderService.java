@@ -107,4 +107,22 @@ public class OrderService {
                 })
                 .toList();
     }
+    //주문 단건 조회 (POS)
+    @Transactional(readOnly = true)
+    public CreateOrderResponse getOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. id=" + orderId));
+
+        int totalAmount = order.getItems().stream()
+                .mapToInt(item -> item.getOrderedPrice() * item.getQuantity())
+                .sum();
+
+        return CreateOrderResponse.builder()
+                .orderId(order.getId())
+                .tableNumber(order.getStoreTable().getTableNumber())
+                .status(order.getStatus())
+                .totalAmount(totalAmount)
+                .orderTime(order.getOrderTime())
+                .build();
+    }
 }
