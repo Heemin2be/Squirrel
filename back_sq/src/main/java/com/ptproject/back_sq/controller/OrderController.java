@@ -6,6 +6,7 @@ import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
 import com.ptproject.back_sq.entity.order.OrderStatus;
 import com.ptproject.back_sq.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -29,8 +30,9 @@ public class OrderController {
     @GetMapping
     public List<OrderSummaryResponse> getOrders(
             @RequestParam(required = false) OrderStatus status,
-            @RequestParam(required = false) LocalDate date
-    ) {
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            ) {
         return orderService.getOrders(status, date);
     }
 }

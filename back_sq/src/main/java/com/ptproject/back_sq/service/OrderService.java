@@ -29,15 +29,23 @@ public class OrderService {
     // 👉 주문 생성 (키오스크에서 호출)
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
 
+        // 1) 테이블 조회
         StoreTable table = storeTableRepository.findById(request.getTableId())
                 .orElseThrow(() -> new IllegalArgumentException("테이블을 찾을 수 없습니다. id=" + request.getTableId()));
 
+        // 2) 주문 엔티티 생성 (status=WAITING, orderTime=now)
         Order order = new Order(table);
         int totalAmount = 0;
 
+        // 3) 주문 항목 추가
         for (CreateOrderRequest.OrderItemRequest itemReq : request.getItems()) {
             Menu menu = menuRepository.findById(itemReq.getMenuId())
                     .orElseThrow(() -> new IllegalArgumentException("메뉴를 찾을 수 없습니다. id=" + itemReq.getMenuId()));
+
+            // 🔹 품절 체크 (Menu 엔티티에 맞게 메서드명만 맞추면 됨)
+            if (menu.isSoldOut()) {
+                throw new IllegalStateException("품절된 메뉴입니다. id=" + menu.getId());
+            }
 
             OrderItem orderItem = new OrderItem(menu, itemReq.getQuantity());
             order.addItem(orderItem);
@@ -45,12 +53,14 @@ public class OrderService {
             totalAmount += orderItem.getOrderedPrice() * itemReq.getQuantity();
         }
 
-        // 테이블 상태를 사용 중으로
+        // 4) 테이블 상태를 사용 중으로 변경
         table.occupy();
+        // storeTableRepository.save(table); // 영속 상태라 생략해도 됨
 
-        storeTableRepository.save(table);
+        // 5) 주문 저장
         Order saved = orderRepository.save(order);
 
+        // 6) 응답 DTO 생성
         return CreateOrderResponse.builder()
                 .orderId(saved.getId())
                 .tableNumber(saved.getStoreTable().getTableNumber())
@@ -66,7 +76,12 @@ public class OrderService {
 
         List<Order> orders;
 
-        if (status != null) {
+        if (status != null && date != null) {
+            // 둘 다 조건 주고 싶은 경우
+            LocalDateTime start = date.atStartOfDay();
+            LocalDateTime end = date.atTime(LocalTime.MAX);
+            orders = orderRepository.findByStatusAndOrderTimeBetween(status, start, end);
+        } else if (status != null) {
             orders = orderRepository.findByStatus(status);
         } else if (date != null) {
             LocalDateTime start = date.atStartOfDay();
