@@ -3,7 +3,7 @@ package com.ptproject.back_sq.entity.employee;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
+//주석
 @Entity
 @Getter
 @NoArgsConstructor
