@@ -1,7 +1,7 @@
 .kiosk-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100vh; /* Use viewport height to ensure it fills the screen */
   background-color: #f4f4f4;
   font-family: 'Helvetica Neue', sans-serif;
 }
@@ -19,18 +19,21 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0; /* Prevent sidebar from shrinking */
 }
 
 .sidebar h2 {
   margin-top: 0;
   border-bottom: 1px solid #555;
   padding-bottom: 10px;
+  text-align: center;
 }
 
 .category-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  overflow-y: auto; /* Allow scrolling if categories overflow */
 }
 
 .category-button {
@@ -44,6 +47,7 @@
   border-radius: 5px;
   cursor: pointer;
   font-size: 16px;
+  transition: background-color 0.2s;
 }
 
 .category-button.active {
@@ -55,7 +59,7 @@
 }
 
 .main-content {
-  flex: 1;
+  flex: 1; /* Allow main content to grow and fill available space */
   padding: 20px;
   overflow-y: auto;
 }
@@ -73,11 +77,12 @@
   text-align: center;
   padding: 15px;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .menu-card:hover {
   transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
 
 .menu-card img {
@@ -99,17 +104,21 @@
   font-weight: bold;
 }
 
+/* Cart component is expected to be a sibling of main-content */
+/* The Cart.css file will style the cart itself */
+
 .kiosk-footer {
   background-color: white;
-  padding: 20px;
+  padding: 20px 40px;
   box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end; /* Align items to the right */
   align-items: center;
+  gap: 30px; /* Add space between summary and button */
 }
 
 .order-summary {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: bold;
 }
 
@@ -120,6 +129,11 @@
   padding: 15px 30px;
   font-size: 20px;
   font-weight: bold;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.checkout-button:hover {
+    background-color: #c0392b;
 }

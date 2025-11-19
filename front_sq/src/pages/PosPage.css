@@ -1,7 +1,7 @@
 .pos-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background-color: #f8f9fa;
   font-family: 'Helvetica Neue', sans-serif;
 }
@@ -20,14 +20,18 @@
   font-size: 24px;
 }
 
-.pos-header nav a {
+.pos-header nav button { /* Changed from a to button */
+  background: none;
+  border: none;
   color: #adb5bd;
   text-decoration: none;
   margin-left: 20px;
   font-size: 16px;
+  cursor: pointer;
+  transition: color 0.2s;
 }
 
-.pos-header nav a:hover {
+.pos-header nav button:hover { /* Changed from a to button */
   color: white;
 }
 

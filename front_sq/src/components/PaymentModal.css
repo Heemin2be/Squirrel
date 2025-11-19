@@ -1,0 +1,114 @@
+/* Using some styles from OrderDetailsModal.css like .modal-overlay, .modal-content, etc. */
+.payment-modal {
+    max-width: 450px;
+}
+
+.total-amount-display {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.total-amount-display span {
+    font-size: 1.2rem;
+    color: #495057;
+}
+
+.total-amount-display strong {
+    font-size: 2rem;
+    color: #e74c3c;
+}
+
+.method-selection {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.method-selection button {
+    padding: 30px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+    background-color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.method-selection button:hover {
+    border-color: #3498db;
+    color: #3498db;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.payment-details {
+    position: relative;
+}
+
+.back-button {
+    position: absolute;
+    top: -25px;
+    left: 0;
+    background: none;
+    border: none;
+    font-size: 1rem;
+    color: #868e96;
+    cursor: pointer;
+}
+.back-button:hover {
+    color: #343a40;
+}
+
+.card-payment p {
+    font-size: 1.2rem;
+    color: #495057;
+    text-align: center;
+    margin: 40px 0;
+}
+
+.cash-payment {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.cash-input, .change-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.2rem;
+}
+
+.cash-input input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1.2rem;
+    text-align: right;
+    width: 150px;
+}
+
+.change-display {
+    background-color: #e9ecef;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.change-display span {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.payment-details .action-button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 20px;
+}

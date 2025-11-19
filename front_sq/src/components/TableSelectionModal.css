@@ -1,0 +1,55 @@
+/* Reusing modal-overlay and modal-content from OrderDetailsModal.css */
+/* If you want separate styling, you can copy them here. */
+
+.table-grid-modal {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 20px;
+  padding: 10px;
+}
+
+.table-card-modal {
+  background-color: #fff;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.table-card-modal:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+
+.table-number-modal {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.table-status-modal {
+  margin-top: 10px;
+  font-size: 1rem;
+  color: #777;
+}
+
+/* Styling for different statuses */
+.table-card-modal.empty {
+  border-color: #2ecc71; /* Green for empty */
+}
+.table-card-modal.empty .table-number-modal {
+  color: #2ecc71;
+}
+
+.table-card-modal.occupied {
+  border-color: #e74c3c; /* Red for occupied */
+  background-color: #fbecec;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.table-card-modal.occupied .table-number-modal {
+  color: #e74c3c;
+}
