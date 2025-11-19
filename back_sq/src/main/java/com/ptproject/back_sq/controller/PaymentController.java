@@ -2,6 +2,7 @@ package com.ptproject.back_sq.controller;
 
 import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
 import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
+import com.ptproject.back_sq.dto.payment.PaymentSummaryResponse;
 import com.ptproject.back_sq.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -21,5 +22,10 @@ public class PaymentController {
             @RequestBody CreatePaymentRequest request
     ) {
         return paymentService.createPayment(orderId, request);
+    }
+    // 👉 결제 취소
+    @PostMapping("/cancel")
+    public PaymentSummaryResponse cancel(@PathVariable Long orderId) {
+        return paymentService.cancelPayment(orderId);
     }
 }

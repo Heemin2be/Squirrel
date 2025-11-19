@@ -29,6 +29,11 @@ public class Payment {
     @Column(nullable = false)
     private PaymentMethod method;
 
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus status;
+
+    private LocalDateTime canceledAt;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false, unique = true)
     private Order order;
@@ -37,6 +42,7 @@ public class Payment {
         this.paymentTime = LocalDateTime.now();
         this.totalAmount = totalAmount;
         this.method = method;
+        this.status = PaymentStatus.COMPLETED;
     }
 
     @PrePersist
@@ -51,5 +57,12 @@ public class Payment {
             throw new IllegalIdentifierException("Payment는 이미 다른 주문과 연결되어 있습니다.");
         }
         this.order = order;
+    }
+    public void cancel(){
+        this.status = PaymentStatus.CANCELED;
+        this.canceledAt = LocalDateTime.now();
+    }
+    public PaymentStatus getStatus(){
+        return status;
     }
 }

@@ -51,6 +51,9 @@ public class Order {
     public void completePayment() {
         this.status = OrderStatus.PAID;
     }
+    public void cancelPayment(){
+        this.status = OrderStatus.CANCELED;
+    }
 
     public void addPayment(Payment payment) {
         this.payment = payment;
