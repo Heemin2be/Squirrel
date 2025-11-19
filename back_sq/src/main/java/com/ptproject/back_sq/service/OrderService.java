@@ -76,36 +76,32 @@ public class OrderService {
 
         List<Order> orders;
 
+        //status + data
         if (status != null && date != null) {
             // 둘 다 조건 주고 싶은 경우
             LocalDateTime start = date.atStartOfDay();
             LocalDateTime end = date.atTime(LocalTime.MAX);
             orders = orderRepository.findByStatusAndOrderTimeBetween(status, start, end);
-        } else if (status != null) {
+        }
+        //status만
+        else if (status != null) {
             orders = orderRepository.findByStatus(status);
-        } else if (date != null) {
+        }
+        //data만
+        else if (date != null) {
             LocalDateTime start = date.atStartOfDay();
             LocalDateTime end = date.atTime(LocalTime.MAX);
             orders = orderRepository.findByOrderTimeBetween(start, end);
-        } else {
-            orders = orderRepository.findAll();
+        }
+        //둘 다 없는 경우
+        else {
+            orders = orderRepository.findAllByOrderByOrderTimeDesc();
         }
 
         return orders.stream()
-                .map(order -> {
-                    int totalAmount = order.getItems().stream()
-                            .mapToInt(item -> item.getOrderedPrice() * item.getQuantity())
-                            .sum();
-
-                    return OrderSummaryResponse.builder()
-                            .orderId(order.getId())
-                            .tableNumber(order.getStoreTable().getTableNumber())
-                            .status(order.getStatus())
-                            .totalAmount(totalAmount)
-                            .orderTime(order.getOrderTime())
-                            .build();
-                })
+                .map(OrderSummaryResponse::from)
                 .toList();
+
     }
     //주문 단건 조회 (POS)
     @Transactional(readOnly = true)
