@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
+@Table(name = "category")
 @Getter
 @NoArgsConstructor
 public class Category {
@@ -19,4 +20,5 @@ public class Category {
     public Category(String name) {
         this.name = name;
     }
+    public void changeName(String name) {this.name = name;}
 }
