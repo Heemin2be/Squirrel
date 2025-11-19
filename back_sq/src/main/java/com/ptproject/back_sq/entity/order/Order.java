@@ -48,7 +48,7 @@ public class Order {
         item.setOrder(this);
     }
 
-    public void complete() {
+    public void completePayment() {
         this.status = OrderStatus.PAID;
     }
 

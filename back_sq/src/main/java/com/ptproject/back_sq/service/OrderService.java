@@ -3,10 +3,13 @@ package com.ptproject.back_sq.service;
 import com.ptproject.back_sq.dto.order.CreateOrderRequest;
 import com.ptproject.back_sq.dto.order.CreateOrderResponse;
 import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
+import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
+import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
 import com.ptproject.back_sq.entity.menu.Menu;
 import com.ptproject.back_sq.entity.order.*;
 import com.ptproject.back_sq.repository.MenuRepository;
 import com.ptproject.back_sq.repository.OrderRepository;
+import com.ptproject.back_sq.repository.PaymentRepository;
 import com.ptproject.back_sq.repository.StoreTableRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ public class OrderService {
     private final StoreTableRepository storeTableRepository;
     private final MenuRepository menuRepository;
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
 
     // 👉 주문 생성 (키오스크에서 호출)
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
@@ -121,4 +125,55 @@ public class OrderService {
                 .orderTime(order.getOrderTime())
                 .build();
     }
+    // 👉 결제 처리 (POS에서 호출)
+    public CreatePaymentResponse createPayment(Long orderId, CreatePaymentRequest request) {
+
+        // 1) 주문 조회
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. id=" + orderId));
+
+        // 2) 주문 상태 검증
+        if (order.getStatus() == OrderStatus.CANCELED) {
+            throw new IllegalStateException("취소된 주문은 결제할 수 없습니다. id=" + orderId);
+        }
+        if (order.getStatus() == OrderStatus.PAID) {
+            throw new IllegalStateException("이미 결제 완료된 주문입니다. id=" + orderId);
+        }
+
+        // 3) 실제 주문 금액 계산
+        int totalAmount = order.getItems().stream()
+                .mapToInt(item -> item.getOrderedPrice() * item.getQuantity())
+                .sum();
+
+        // 4) 손님이 낸 돈 검증
+        int paidAmount = request.getPaidAmount();
+        if (paidAmount < totalAmount) {
+            throw new IllegalArgumentException(
+                    "지불 금액이 부족합니다. 주문 금액=" + totalAmount + ", 지불 금액=" + paidAmount
+            );
+        }
+
+        int change = paidAmount - totalAmount;
+
+        // 5) Payment 엔티티 생성 및 저장
+        Payment payment = new Payment(totalAmount, request.getMethod());
+        payment.setOrder(order);                    // ✅ Order 연결
+        Payment savedPayment = paymentRepository.save(payment);
+
+        // 6) 주문 상태 결제 완료로 변경
+        order.completePayment();                    // 위에서 만든 메서드
+        // orderRepository.save(order);             // 영속 상태면 생략해도 됨
+
+        // 7) 응답 DTO 생성
+        return CreatePaymentResponse.builder()
+                .paymentId(savedPayment.getId())
+                .orderId(order.getId())
+                .method(savedPayment.getMethod())
+                .totalAmount(totalAmount)
+                .paidAmount(paidAmount)
+                .change(change)
+                .paymentTime(savedPayment.getPaymentTime())
+                .build();
+    }
+
 }

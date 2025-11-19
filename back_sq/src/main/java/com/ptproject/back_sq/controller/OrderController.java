@@ -3,6 +3,8 @@ package com.ptproject.back_sq.controller;
 import com.ptproject.back_sq.dto.order.CreateOrderRequest;
 import com.ptproject.back_sq.dto.order.CreateOrderResponse;
 import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
+import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
+import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
 import com.ptproject.back_sq.entity.order.OrderStatus;
 import com.ptproject.back_sq.service.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -40,4 +42,14 @@ public class OrderController {
     public CreateOrderResponse getOrder(@PathVariable Long orderId){
         return orderService.getOrder(orderId);   // ✅ 여기만 수정!
     }
+
+    // 👉 결제 처리 (POS에서 사용)
+    @PostMapping("/{orderId}/payment")
+    public CreatePaymentResponse createPayment(
+            @PathVariable Long orderId,
+            @RequestBody CreatePaymentRequest request
+    ) {
+        return orderService.createPayment(orderId, request);
+    }
+
 }

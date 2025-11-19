@@ -43,7 +43,7 @@ public class PaymentService {
 
     Payment payment = new Payment(totalAmount, request.getMethod());
         order.addPayment(payment);
-        order.complete();  // 상태 -> PAID
+        order.completePayment();  // 상태 -> PAID
 
         // 테이블 비우기
         StoreTable table = order.getStoreTable();
