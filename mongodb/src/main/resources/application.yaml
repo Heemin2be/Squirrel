@@ -1,0 +1,4 @@
+spring:
+  name : mongodb
+  mongodb:
+    uri: mongodb+srv://dohoon:1234@cluster0.jfzomnq.mongodb.net/?appName=Cluster0

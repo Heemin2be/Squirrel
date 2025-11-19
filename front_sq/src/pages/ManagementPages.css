@@ -1,0 +1,192 @@
+/* General container for all management pages */
+.management-container {
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.management-container h1 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 30px;
+  border-bottom: 2px solid #ecf0f1;
+  padding-bottom: 15px;
+}
+
+/* Section styling */
+.stats-section, .data-table, .actions, .form-container {
+  margin-bottom: 40px;
+}
+
+.stats-section h2, .data-table h3, .form-container h3 {
+  color: #34495e;
+  margin-bottom: 20px;
+}
+
+/* Action buttons */
+.actions {
+  text-align: right;
+  margin-bottom: 20px;
+}
+
+.actions button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.actions button:hover {
+  background-color: #2980b9;
+}
+
+/* Form for adding new data */
+.form-container {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+}
+
+.form-container input,
+.form-container select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 15px;
+  flex-grow: 1;
+}
+
+.form-container button {
+  background-color: #2ecc71;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.form-container button:hover {
+  background-color: #27ae60;
+}
+
+/* Custom File Input Styles */
+.file-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.file-upload-label {
+    padding: 10px 15px;
+    background-color: #95a5a6;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.file-upload-label:hover {
+    background-color: #7f8c8d;
+}
+
+.file-input-wrapper input[type="file"] {
+    display: none;
+}
+
+.image-preview {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+
+/* Data list/table styling */
+.data-list {
+  list-style: none;
+  padding: 0;
+  border: 1px solid #ecf0f1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.data-list-item, .data-list-header {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  padding: 15px;
+  border-bottom: 1px solid #ecf0f1;
+  align-items: center;
+}
+
+.data-list-header {
+  background-color: #ecf0f1;
+  font-weight: bold;
+  color: #34495e;
+}
+
+.data-list-item:last-child {
+  border-bottom: none;
+}
+
+.data-list-item:nth-child(even) {
+  background-color: #fdfdfd;
+}
+
+.data-list-item button {
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #e74c3c;
+    color: white;
+}
+.data-list-item button:hover{
+    background-color: #c0392b;
+}
+
+
+/* Sales Statistics Specific */
+.stats-card-group {
+    display: flex;
+    gap: 20px;
+    justify-content: space-around;
+}
+.stats-card {
+  background-color: #ecf0f1;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  flex-grow: 1;
+}
+
+.stats-card h3 {
+    margin-top: 0;
+    color: #3498db;
+}
+
+.stats-card p {
+  font-size: 24px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin: 10px 0;
+}
+
+.stats-card span {
+    color: #7f8c8d;
+}
