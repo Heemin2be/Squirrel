@@ -52,7 +52,7 @@ public class OrderController {
             @PathVariable Long orderId,
             @RequestBody CreatePaymentRequest request
     ) {
-        return orderService.createPayment(orderId, request);
+        return paymentService.createPayment(orderId, request);
     }
     
     // 👉 결제 취소 (POS에서 사용)

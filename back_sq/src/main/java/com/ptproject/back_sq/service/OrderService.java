@@ -3,16 +3,15 @@ package com.ptproject.back_sq.service;
 import com.ptproject.back_sq.dto.order.CreateOrderRequest;
 import com.ptproject.back_sq.dto.order.CreateOrderResponse;
 import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
-import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
-import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
 import com.ptproject.back_sq.dto.websocket.NewOrderPayload;
-import com.ptproject.back_sq.dto.websocket.OrderStatusChangedPayload;
 import com.ptproject.back_sq.dto.websocket.WebSocketMessage;
 import com.ptproject.back_sq.entity.menu.Menu;
-import com.ptproject.back_sq.entity.order.*;
+import com.ptproject.back_sq.entity.order.Order;
+import com.ptproject.back_sq.entity.order.OrderItem;
+import com.ptproject.back_sq.entity.order.OrderStatus;
+import com.ptproject.back_sq.entity.order.StoreTable;
 import com.ptproject.back_sq.repository.MenuRepository;
 import com.ptproject.back_sq.repository.OrderRepository;
-import com.ptproject.back_sq.repository.PaymentRepository;
 import com.ptproject.back_sq.repository.StoreTableRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +32,6 @@ public class OrderService {
     private final StoreTableRepository storeTableRepository;
     private final MenuRepository menuRepository;
     private final OrderRepository orderRepository;
-    private final PaymentRepository paymentRepository;
     private final SimpMessagingTemplate messagingTemplate; // ⭐ WebSocket 전송용
 
     // 👉 주문 생성 (키오스크에서 호출)
@@ -67,13 +65,13 @@ public class OrderService {
         // 5) 주문 저장
         Order saved = orderRepository.save(order);
 
-        // ⭐ 5-1) WebSocket: 신규 주문 알림 (POS로 브로드캐스트)
+        // ⭐ WebSocket: 신규 주문 알림 (POS로 브로드캐스트)
         NewOrderPayload payload = NewOrderPayload.from(saved);
         WebSocketMessage<NewOrderPayload> msg =
                 new WebSocketMessage<>("new-order", payload);
         messagingTemplate.convertAndSend("/topic/new-order", msg);
 
-        // 6) 총 금액 계산 (공통 메서드 사용)
+        // 6) 총 금액 계산
         int totalAmount = saved.calculateTotalAmount();
 
         // 7) 응답 DTO 생성
@@ -135,78 +133,5 @@ public class OrderService {
                 .build();
     }
 
-    // 👉 결제 처리 (POS에서 호출)
-    public CreatePaymentResponse createPayment(Long orderId, CreatePaymentRequest request) {
-
-        // 1) 주문 조회
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
-
-        // 2) 주문 상태 검증
-        if (order.getStatus() == OrderStatus.CANCELED) {
-            throw new IllegalStateException("취소된 주문은 결제할 수 없습니다. id=" + orderId);
-        }
-        if (order.getStatus() == OrderStatus.PAID) {
-            throw new IllegalStateException("이미 결제 완료된 주문입니다. id=" + orderId);
-        }
-
-        // 3) 실제 주문 금액 계산
-        int totalAmount = order.calculateTotalAmount();
-        int paidAmount = request.getPaidAmount();
-
-        // 4) 결제 수단별 검증
-        if (request.getMethod() == PaymentMethod.CASH) {
-            // 현금: 받은 금액 < 결제 금액 → 에러
-            if (paidAmount < totalAmount) {
-                throw new IllegalArgumentException(
-                        "지불 금액이 부족합니다. 주문 금액=" + totalAmount + ", 지불 금액=" + paidAmount
-                );
-            }
-        } else if (request.getMethod() == PaymentMethod.CARD) {
-            // 카드: 정확히 맞게만
-            if (paidAmount != totalAmount) {
-                throw new IllegalArgumentException(
-                        "카드 결제 금액이 주문 금액과 일치하지 않습니다. 주문 금액=" + totalAmount + ", 지불 금액=" + paidAmount
-                );
-            }
-        }
-
-        int change = paidAmount - totalAmount;
-        if (request.getMethod() == PaymentMethod.CARD) {
-            // 카드 결제는 거스름돈 0
-            change = 0;
-        }
-
-        // 5) Payment 엔티티 생성 및 저장
-        Payment payment = new Payment(totalAmount, request.getMethod());
-        payment.setOrder(order);
-        Payment savedPayment = paymentRepository.save(payment);
-
-        // 6) 주문 상태 결제 완료로 변경
-        order.completePayment();  // WAITING -> PAID
-
-        // 7) 테이블 비우기
-        StoreTable table = order.getStoreTable();
-        if (table != null) {
-            table.empty();
-            storeTableRepository.save(table);
-        }
-
-        // ⭐ 7-1) WebSocket: 주문 상태 변경 알림 (예: POS 다른 화면, 모니터용 화면 등)
-        OrderStatusChangedPayload statusPayload = OrderStatusChangedPayload.from(order);
-        WebSocketMessage<OrderStatusChangedPayload> statusMsg =
-                new WebSocketMessage<>("order-status-changed", statusPayload);
-        messagingTemplate.convertAndSend("/topic/order-status", statusMsg);
-
-        // 8) 응답 DTO 생성
-        return CreatePaymentResponse.builder()
-                .paymentId(savedPayment.getId())
-                .orderId(order.getId())
-                .method(savedPayment.getMethod())
-                .totalAmount(totalAmount)
-                .paidAmount(paidAmount)
-                .change(change)
-                .paymentTime(savedPayment.getPaymentTime())
-                .build();
-    }
+    // ❌ 결제 로직은 PaymentService로 이사 완료
 }
