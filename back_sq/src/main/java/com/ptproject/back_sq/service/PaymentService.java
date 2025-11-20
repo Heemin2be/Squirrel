@@ -20,48 +20,6 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final StoreTableRepository storeTableRepository;
 
-    // 👉 결제 처리 (POS)
-    public CreatePaymentResponse createPayment(Long orderId, CreatePaymentRequest request) {
-
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. id=" + orderId));
-
-        if (order.getStatus() == OrderStatus.PAID) {
-            throw new IllegalStateException("이미 결제된 주문입니다.");
-        }
-
-        int totalAmount = order.getItems().stream()
-                .mapToInt(item -> item.getOrderedPrice() * item.getQuantity())
-                .sum();
-
-        if (request.getPaidAmount() < totalAmount) {
-            throw new IllegalArgumentException("받은 금액이 결제 금액보다 적습니다.");
-        }
-
-        int change = request.getPaidAmount() - totalAmount;
-
-        Payment payment = new Payment(totalAmount, request.getMethod());
-        order.addPayment(payment);
-        order.completePayment();  // 상태 -> PAID
-
-        // 테이블 비우기
-        StoreTable table = order.getStoreTable();
-        table.empty();
-        storeTableRepository.save(table);
-
-        paymentRepository.save(payment);
-        orderRepository.save(order);
-
-        return CreatePaymentResponse.builder()
-                .paymentId(payment.getId())
-                .orderId(order.getId())
-                .method(payment.getMethod())
-                .totalAmount(totalAmount)
-                .paidAmount(request.getPaidAmount())
-                .change(change)
-                .paymentTime(payment.getPaymentTime())
-                .build();
-    }
 
     // 👉 결제 취소 (POS)
     public PaymentSummaryResponse cancelPayment(Long orderId) {

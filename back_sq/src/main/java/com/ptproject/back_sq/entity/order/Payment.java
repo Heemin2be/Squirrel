@@ -54,11 +54,14 @@ public class Payment {
 
     public void setOrder(Order order) {
         if(this.order != null && this.order != order){
-            throw new IllegalIdentifierException("Payment는 이미 다른 주문과 연결되어 있습니다.");
+            throw new IllegalStateException("Payment는 이미 다른 주문과 연결되어 있습니다.");
         }
         this.order = order;
     }
     public void cancel(){
+        if (this.status == PaymentStatus.CANCELED){
+            throw new IllegalStateException("이미 취소된 결제입니다.");
+        }
         this.status = PaymentStatus.CANCELED;
         this.canceledAt = LocalDateTime.now();
     }

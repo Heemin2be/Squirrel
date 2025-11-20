@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.boot.model.naming.IllegalIdentifierException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,12 +49,22 @@ public class Order {
         item.setOrder(this);
     }
 
+    //결제 완료
     public void completePayment() {
+        if (this.status != OrderStatus.WAITING){
+            throw new IllegalStateException("결제 가능한 상태가 아닙니다.");
+        }
         this.status = OrderStatus.PAID;
     }
+
+    //결제 취소
     public void cancelPayment(){
+        if(this.status != OrderStatus.PAID){
+            throw new IllegalStateException("결제 취소는 결제 완료 상태에서만 가능합니다.");
+        }
         this.status = OrderStatus.CANCELED;
     }
+
 
     public void addPayment(Payment payment) {
         this.payment = payment;

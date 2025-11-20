@@ -17,4 +17,6 @@ public class CreatePaymentResponse {
     private int paidAmount;    // 손님이 낸 돈
     private int change;        // 거스름돈
     private LocalDateTime paymentTime;
+
+
 }

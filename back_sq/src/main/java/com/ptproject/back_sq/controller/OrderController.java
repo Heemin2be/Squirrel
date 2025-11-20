@@ -5,8 +5,10 @@ import com.ptproject.back_sq.dto.order.CreateOrderResponse;
 import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
 import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
 import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
+import com.ptproject.back_sq.dto.payment.PaymentSummaryResponse;
 import com.ptproject.back_sq.entity.order.OrderStatus;
 import com.ptproject.back_sq.service.OrderService;
+import com.ptproject.back_sq.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +23,7 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final PaymentService paymentService;
 
     // 👉 주문 생성 (키오스크)
     @PostMapping
@@ -51,5 +54,12 @@ public class OrderController {
     ) {
         return orderService.createPayment(orderId, request);
     }
+    
+    // 👉 결제 취소 (POS에서 사용)
+    @PostMapping("/{orderId}/cancel")
+    public PaymentSummaryResponse cancelPayment(@PathVariable Long orderId) {
+        return paymentService.cancelPayment(orderId);
+    }
+
 
 }

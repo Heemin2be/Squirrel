@@ -145,26 +145,47 @@ public class OrderService {
                 .mapToInt(item -> item.getOrderedPrice() * item.getQuantity())
                 .sum();
 
-        // 4) 손님이 낸 돈 검증
         int paidAmount = request.getPaidAmount();
-        if (paidAmount < totalAmount) {
-            throw new IllegalArgumentException(
-                    "지불 금액이 부족합니다. 주문 금액=" + totalAmount + ", 지불 금액=" + paidAmount
-            );
+
+        // 🔹 4) 결제 수단별 검증 로직 분리
+        if (request.getMethod() == PaymentMethod.CASH) {
+            // 현금: 받은 금액 < 결제 금액 → 에러
+            if (paidAmount < totalAmount) {
+                throw new IllegalArgumentException(
+                        "지불 금액이 부족합니다. 주문 금액=" + totalAmount + ", 지불 금액=" + paidAmount
+                );
+            }
+        } else if (request.getMethod() == PaymentMethod.CARD) {
+            // 카드: 정확히 맞게만 받도록 (정책에 따라 조정 가능)
+            if (paidAmount != totalAmount) {
+                throw new IllegalArgumentException(
+                        "카드 결제 금액이 주문 금액과 일치하지 않습니다. 주문 금액=" + totalAmount + ", 지불 금액=" + paidAmount
+                );
+            }
         }
 
         int change = paidAmount - totalAmount;
+        if (request.getMethod() == PaymentMethod.CARD) {
+            // 카드 결제는 거스름돈 0으로 처리
+            change = 0;
+        }
 
         // 5) Payment 엔티티 생성 및 저장
         Payment payment = new Payment(totalAmount, request.getMethod());
-        payment.setOrder(order);                    // ✅ Order 연결
+        payment.setOrder(order);
         Payment savedPayment = paymentRepository.save(payment);
 
         // 6) 주문 상태 결제 완료로 변경
-        order.completePayment();                    // 위에서 만든 메서드
-        // orderRepository.save(order);             // 영속 상태면 생략해도 됨
+        order.completePayment();      // WAITING -> PAID
 
-        // 7) 응답 DTO 생성
+        // 🔹 7) 테이블 비우기 (결제 완료 시)
+        StoreTable table = order.getStoreTable();
+        if (table != null) {
+            table.empty();
+            storeTableRepository.save(table);
+        }
+
+        // 8) 응답 DTO 생성
         return CreatePaymentResponse.builder()
                 .paymentId(savedPayment.getId())
                 .orderId(order.getId())
@@ -175,5 +196,6 @@ public class OrderService {
                 .paymentTime(savedPayment.getPaymentTime())
                 .build();
     }
+
 
 }
