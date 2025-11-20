@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <title>WebSocket 테스트</title>
+</head>
+<body>
+<h1>WebSocket 테스트</h1>
+
+<div>
+    <h2>로그</h2>
+    <pre id="log"></pre>
+</div>
+
+<!-- ✅ stomp.js만 사용 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<script>
+    const logEl = document.getElementById("log");
+    const log = (msg) => {
+      console.log(msg);
+      logEl.textContent += msg + "\n";
+    };
+
+    // ✅ 순수 WebSocket으로 서버 /ws 엔드포인트에 연결
+    const socket = new WebSocket("ws://localhost:8080/ws");
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, (frame) => {
+      log("✅ 연결 성공: " + frame);
+
+      stompClient.subscribe("/topic/new-order", (message) => {
+        log("📦 new-order: " + message.body);
+      });
+
+      stompClient.subscribe("/topic/order-status", (message) => {
+        log("🔄 order-status: " + message.body);
+      });
+
+      stompClient.subscribe("/topic/menu-update", (message) => {
+        log("🍽 menu-update: " + message.body);
+      });
+    }, (error) => {
+      log("❌ 연결 실패: " + error);
+    });
+</script>
+</body>
+</html>

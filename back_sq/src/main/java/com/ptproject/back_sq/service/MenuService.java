@@ -3,12 +3,16 @@ package com.ptproject.back_sq.service;
 import com.ptproject.back_sq.dto.menu.MenuRequest;
 import com.ptproject.back_sq.dto.menu.MenuResponse;
 import com.ptproject.back_sq.dto.menu.SoldOutRequest;
+import com.ptproject.back_sq.dto.websocket.MenuDeletePayload;
+import com.ptproject.back_sq.dto.websocket.MenuUpdatePayload;
+import com.ptproject.back_sq.dto.websocket.WebSocketMessage;
 import com.ptproject.back_sq.entity.menu.Category;
 import com.ptproject.back_sq.entity.menu.Menu;
 import com.ptproject.back_sq.repository.CategoryRepository;
 import com.ptproject.back_sq.repository.MenuRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +25,7 @@ public class MenuService {
 
     private final MenuRepository menuRepository;
     private final CategoryRepository categoryRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // 전체 메뉴 조회 (POS용)
     @Transactional(readOnly = true)
@@ -59,6 +64,13 @@ public class MenuService {
         );
 
         Menu saved = menuRepository.save(menu);
+
+        // 👉 WebSocket: 메뉴 생성 알림
+        MenuUpdatePayload payload = MenuUpdatePayload.from(saved);
+        WebSocketMessage<MenuUpdatePayload> msg =
+                new WebSocketMessage<>("menu-created", payload);
+        messagingTemplate.convertAndSend("/topic/menu-update", msg);
+
         return MenuResponse.from(saved);
     }
 
@@ -77,6 +89,12 @@ public class MenuService {
                 category
         );
 
+        // 👉 WebSocket: 메뉴 수정 알림
+        MenuUpdatePayload payload = MenuUpdatePayload.from(menu);
+        WebSocketMessage<MenuUpdatePayload> msg =
+                new WebSocketMessage<>("menu-updated", payload);
+        messagingTemplate.convertAndSend("/topic/menu-update", msg);
+
         return MenuResponse.from(menu);
     }
 
@@ -86,6 +104,13 @@ public class MenuService {
                 .orElseThrow(() -> new EntityNotFoundException("Menu not found: " + id));
 
         menu.changeSoldOut(request.isSoldOut());
+
+        // 👉 WebSocket: 품절 변경 알림
+        MenuUpdatePayload payload = MenuUpdatePayload.from(menu);
+        WebSocketMessage<MenuUpdatePayload> msg =
+                new WebSocketMessage<>("menu-soldout-changed", payload);
+        messagingTemplate.convertAndSend("/topic/menu-update", msg);
+
         return MenuResponse.from(menu);
     }
 
@@ -95,6 +120,12 @@ public class MenuService {
             throw new EntityNotFoundException("Menu not found: " + id);
         }
         menuRepository.deleteById(id);
+
+        // 👉 WebSocket: 메뉴 삭제 알림
+        MenuDeletePayload payload = new MenuDeletePayload(id);
+        WebSocketMessage<MenuDeletePayload> msg =
+                new WebSocketMessage<>("menu-deleted", payload);
+        messagingTemplate.convertAndSend("/topic/menu-update", msg);
     }
 
     // 카테고리 조회 공통 로직

@@ -5,6 +5,9 @@ import com.ptproject.back_sq.dto.order.CreateOrderResponse;
 import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
 import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
 import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
+import com.ptproject.back_sq.dto.websocket.NewOrderPayload;
+import com.ptproject.back_sq.dto.websocket.OrderStatusChangedPayload;
+import com.ptproject.back_sq.dto.websocket.WebSocketMessage;
 import com.ptproject.back_sq.entity.menu.Menu;
 import com.ptproject.back_sq.entity.order.*;
 import com.ptproject.back_sq.repository.MenuRepository;
@@ -12,6 +15,7 @@ import com.ptproject.back_sq.repository.OrderRepository;
 import com.ptproject.back_sq.repository.PaymentRepository;
 import com.ptproject.back_sq.repository.StoreTableRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +33,7 @@ public class OrderService {
     private final MenuRepository menuRepository;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
+    private final SimpMessagingTemplate messagingTemplate; // ⭐ WebSocket 전송용
 
     // 👉 주문 생성 (키오스크에서 호출)
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
@@ -60,6 +65,12 @@ public class OrderService {
 
         // 5) 주문 저장
         Order saved = orderRepository.save(order);
+
+        // ⭐ 5-1) WebSocket: 신규 주문 알림 (POS로 브로드캐스트)
+        NewOrderPayload payload = NewOrderPayload.from(saved);
+        WebSocketMessage<NewOrderPayload> msg =
+                new WebSocketMessage<>("new-order", payload);
+        messagingTemplate.convertAndSend("/topic/new-order", msg);
 
         // 6) 총 금액 계산 (공통 메서드 사용)
         int totalAmount = saved.calculateTotalAmount();
@@ -179,6 +190,12 @@ public class OrderService {
             table.empty();
             storeTableRepository.save(table);
         }
+
+        // ⭐ 7-1) WebSocket: 주문 상태 변경 알림 (예: POS 다른 화면, 모니터용 화면 등)
+        OrderStatusChangedPayload statusPayload = OrderStatusChangedPayload.from(order);
+        WebSocketMessage<OrderStatusChangedPayload> statusMsg =
+                new WebSocketMessage<>("order-status-changed", statusPayload);
+        messagingTemplate.convertAndSend("/topic/order-status", statusMsg);
 
         // 8) 응답 DTO 생성
         return CreatePaymentResponse.builder()

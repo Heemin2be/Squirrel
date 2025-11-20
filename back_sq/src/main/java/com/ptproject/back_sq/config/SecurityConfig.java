@@ -5,7 +5,6 @@ import com.ptproject.back_sq.config.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,15 +22,30 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .httpBasic(httpBasic -> httpBasic.disable())   // 🔥 기본 인증창 비활성화
+                .httpBasic(httpBasic -> httpBasic.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // 🔹 WebSocket (STOMP)는 전부 허용
+                        .requestMatchers("/ws/**", "/topic/**", "/app/**").permitAll()
+
+                        // 🔹 로그인 API는 허용
                         .requestMatchers("/api/auth/login").permitAll()
+
+                        // 🔹 주문/메뉴/테이블 API는 일단 개발 단계에서 모두 허용
+                        //    (키오스크에서도 토큰 없이 쓰게 하려면 이대로 두면 됨)
+                        .requestMatchers(
+                                "/api/orders/**",
+                                "/api/menus/**",
+                                "/api/tables/**"
+                        ).permitAll()
+
+                        // 🔹 관리자 전용
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/**").authenticated()
-                        .anyRequest().permitAll()
+
+                        // 그 외 API는 인증 필요
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider),
@@ -41,4 +55,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-
