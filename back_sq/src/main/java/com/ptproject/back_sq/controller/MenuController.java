@@ -1,6 +1,8 @@
 package com.ptproject.back_sq.controller;
 
+import com.ptproject.back_sq.dto.menu.MenuRequest;
 import com.ptproject.back_sq.dto.menu.MenuResponse;
+import com.ptproject.back_sq.dto.menu.SoldOutRequest;
 import com.ptproject.back_sq.service.MenuService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -33,4 +35,33 @@ public class MenuController {
         return menuService.getMenu(id);
     }
 
+    // 🔹 메뉴 생성 (POS - 관리자용)
+    @PostMapping
+    public MenuResponse createMenu(@RequestBody MenuRequest request) {
+        return menuService.createMenu(request);
+    }
+
+    // 🔹 메뉴 수정
+    @PutMapping("/{id}")
+    public MenuResponse updateMenu(
+            @PathVariable Long id,
+            @RequestBody MenuRequest request
+    ) {
+        return menuService.updateMenu(id, request);
+    }
+
+    // 🔹 품절 상태 변경
+    @PatchMapping("/{id}/sold-out")
+    public MenuResponse changeSoldOut(
+            @PathVariable Long id,
+            @RequestBody SoldOutRequest request
+    ) {
+        return menuService.changeSoldOut(id, request);
+    }
+
+    // 🔹 메뉴 삭제
+    @DeleteMapping("/{id}")
+    public void deleteMenu(@PathVariable Long id) {
+        menuService.deleteMenu(id);
+    }
 }
