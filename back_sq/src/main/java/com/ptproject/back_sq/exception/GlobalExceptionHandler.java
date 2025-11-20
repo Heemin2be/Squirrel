@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -20,7 +21,7 @@ public class GlobalExceptionHandler {
     ) {
         return ErrorResponse.builder()
                 .status(status.value())
-                .error(status.getReasonPhrase())
+                .code(status.name())
                 .message(message)
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
@@ -42,8 +43,8 @@ public class GlobalExceptionHandler {
             IllegalStateException ex,
             HttpServletRequest request
     ) {
-        ErrorResponse body = buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        ErrorResponse body = buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     // JPA에서 엔티티 없을 때
@@ -69,6 +70,15 @@ public class GlobalExceptionHandler {
 
         ErrorResponse body = buildErrorResponse(HttpStatus.BAD_REQUEST, message, request);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse body = buildErrorResponse(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.", request);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
     // 그 외 처리하지 않은 예외 → 500

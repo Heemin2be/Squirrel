@@ -4,10 +4,9 @@ import com.ptproject.back_sq.entity.employee.Employee;
 import com.ptproject.back_sq.entity.employee.TimeRecord;
 import com.ptproject.back_sq.repository.EmployeeRepository;
 import com.ptproject.back_sq.repository.TimeRecordRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -18,7 +17,7 @@ public class TimeRecordService {
 
     public void clockIn(Long employeeId) {
         Employee emp = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("직원 없음: " + employeeId));
+                .orElseThrow(() -> new EntityNotFoundException("직원을 찾을 수 없습니다. id=" + employeeId));
 
         // 이미 출근 중인지 체크 (마지막 기록에 clockOut이 비어 있으면 출근 중)
         timeRecordRepository.findByEmployeeIdOrderByClockInDesc(employeeId)

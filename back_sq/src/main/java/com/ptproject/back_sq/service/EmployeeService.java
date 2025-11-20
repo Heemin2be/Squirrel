@@ -5,6 +5,7 @@ import com.ptproject.back_sq.dto.employee.EmployeeResponse;
 import com.ptproject.back_sq.dto.employee.UpdateEmployeeWageRequest;
 import com.ptproject.back_sq.entity.employee.Employee;
 import com.ptproject.back_sq.repository.EmployeeRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -46,7 +47,7 @@ public class EmployeeService {
 
     public EmployeeResponse updateWage(Long id, UpdateEmployeeWageRequest req) {
         Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("직원을 찾을 수 없습니다. id=" + id));
+                .orElseThrow(() -> new EntityNotFoundException("직원을 찾을 수 없습니다. id=" + id));
 
         employee.changeHourlyWage(req.getHourlyWage());
         return EmployeeResponse.from(employee);

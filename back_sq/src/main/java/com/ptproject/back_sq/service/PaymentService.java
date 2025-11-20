@@ -7,6 +7,7 @@ import com.ptproject.back_sq.entity.order.*;
 import com.ptproject.back_sq.repository.OrderRepository;
 import com.ptproject.back_sq.repository.PaymentRepository;
 import com.ptproject.back_sq.repository.StoreTableRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +27,11 @@ public class PaymentService {
 
         // 1) 주문 찾기
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. id=" + orderId));
+                .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
 
         // 2) 주문에 연결된 결제 찾기
         Payment payment = paymentRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("결제 내역이 존재하지 않습니다. orderId=" + orderId));
+                .orElseThrow(() -> new EntityNotFoundException("결제 내역이 존재하지 않습니다. orderId=" + orderId));
 
         // 3) 이미 취소된 결제면 막기
         if (payment.getStatus() == PaymentStatus.CANCELED) {

@@ -27,25 +27,26 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // 🔹 WebSocket (STOMP)는 전부 허용
-                        .requestMatchers("/ws/**", "/topic/**", "/app/**").permitAll()
-
-                        // 🔹 로그인 API는 허용
+                        // ✅ 로그인은 항상 허용
                         .requestMatchers("/api/auth/login").permitAll()
 
-                        // 🔹 주문/메뉴/테이블 API는 일단 개발 단계에서 모두 허용
-                        //    (키오스크에서도 토큰 없이 쓰게 하려면 이대로 두면 됨)
+                        // ✅ 지금 개발/테스트 중이라서 주요 API는 전부 풀어줌
                         .requestMatchers(
                                 "/api/orders/**",
                                 "/api/menus/**",
-                                "/api/tables/**"
+                                "/api/admin/stats/**",
+                                "/api/stats/**",
+                                "/api/tables/**",
+                                "/ws/**",
+                                "/topic/**",
+                                "/app/**"
                         ).permitAll()
 
-                        // 🔹 관리자 전용
+                        // 나머지 admin 전용 API 있으면 여기서만 ROLE_ADMIN 요구
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // 그 외 API는 인증 필요
-                        .anyRequest().authenticated()
+                        // 그 외는 일단 허용
+                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider),

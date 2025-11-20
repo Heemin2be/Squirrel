@@ -14,6 +14,7 @@ import com.ptproject.back_sq.repository.MenuRepository;
 import com.ptproject.back_sq.repository.OrderRepository;
 import com.ptproject.back_sq.repository.PaymentRepository;
 import com.ptproject.back_sq.repository.StoreTableRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,7 @@ public class OrderService {
 
         // 1) 테이블 조회
         StoreTable table = storeTableRepository.findById(request.getTableId())
-                .orElseThrow(() -> new IllegalArgumentException("테이블을 찾을 수 없습니다. id=" + request.getTableId()));
+                .orElseThrow(() -> new EntityNotFoundException("테이블을 찾을 수 없습니다. id=" + request.getTableId()));
 
         // 2) 주문 엔티티 생성 (status = WAITING, orderTime = now)
         Order order = new Order(table);
@@ -48,7 +49,7 @@ public class OrderService {
         // 3) 주문 항목 추가
         for (CreateOrderRequest.OrderItemRequest itemReq : request.getItems()) {
             Menu menu = menuRepository.findById(itemReq.getMenuId())
-                    .orElseThrow(() -> new IllegalArgumentException("메뉴를 찾을 수 없습니다. id=" + itemReq.getMenuId()));
+                    .orElseThrow(() -> new EntityNotFoundException("메뉴를 찾을 수 없습니다. id=" + itemReq.getMenuId()));
 
             // 🔹 품절 체크
             if (menu.isSoldOut()) {
@@ -121,7 +122,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public CreateOrderResponse getOrder(Long orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. id=" + orderId));
+                .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
 
         int totalAmount = order.calculateTotalAmount();
 
@@ -139,7 +140,7 @@ public class OrderService {
 
         // 1) 주문 조회
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. id=" + orderId));
+                .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
 
         // 2) 주문 상태 검증
         if (order.getStatus() == OrderStatus.CANCELED) {
