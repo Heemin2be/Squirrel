@@ -37,34 +37,34 @@ public class OrderService {
         StoreTable table = storeTableRepository.findById(request.getTableId())
                 .orElseThrow(() -> new IllegalArgumentException("테이블을 찾을 수 없습니다. id=" + request.getTableId()));
 
-        // 2) 주문 엔티티 생성 (status=WAITING, orderTime=now)
+        // 2) 주문 엔티티 생성 (status = WAITING, orderTime = now)
         Order order = new Order(table);
-        int totalAmount = 0;
 
         // 3) 주문 항목 추가
         for (CreateOrderRequest.OrderItemRequest itemReq : request.getItems()) {
             Menu menu = menuRepository.findById(itemReq.getMenuId())
                     .orElseThrow(() -> new IllegalArgumentException("메뉴를 찾을 수 없습니다. id=" + itemReq.getMenuId()));
 
-            // 🔹 품절 체크 (Menu 엔티티에 맞게 메서드명만 맞추면 됨)
+            // 🔹 품절 체크
             if (menu.isSoldOut()) {
                 throw new IllegalStateException("품절된 메뉴입니다. id=" + menu.getId());
             }
 
             OrderItem orderItem = new OrderItem(menu, itemReq.getQuantity());
             order.addItem(orderItem);
-
-            totalAmount += orderItem.getOrderedPrice() * itemReq.getQuantity();
         }
 
         // 4) 테이블 상태를 사용 중으로 변경
         table.occupy();
-        // storeTableRepository.save(table); // 영속 상태라 생략해도 됨
+        // 영속 상태라 save 안 해도 flush 시점에 같이 반영됨
 
         // 5) 주문 저장
         Order saved = orderRepository.save(order);
 
-        // 6) 응답 DTO 생성
+        // 6) 총 금액 계산 (공통 메서드 사용)
+        int totalAmount = saved.calculateTotalAmount();
+
+        // 7) 응답 DTO 생성
         return CreateOrderResponse.builder()
                 .orderId(saved.getId())
                 .tableNumber(saved.getStoreTable().getTableNumber())
@@ -80,24 +80,23 @@ public class OrderService {
 
         List<Order> orders;
 
-        //status + data
+        // status + date
         if (status != null && date != null) {
-            // 둘 다 조건 주고 싶은 경우
             LocalDateTime start = date.atStartOfDay();
             LocalDateTime end = date.atTime(LocalTime.MAX);
             orders = orderRepository.findByStatusAndOrderTimeBetween(status, start, end);
         }
-        //status만
+        // status 만
         else if (status != null) {
             orders = orderRepository.findByStatus(status);
         }
-        //data만
+        // date 만
         else if (date != null) {
             LocalDateTime start = date.atStartOfDay();
             LocalDateTime end = date.atTime(LocalTime.MAX);
             orders = orderRepository.findByOrderTimeBetween(start, end);
         }
-        //둘 다 없는 경우
+        // 둘 다 없음 → 전체 (최근 순)
         else {
             orders = orderRepository.findAllByOrderByOrderTimeDesc();
         }
@@ -105,17 +104,15 @@ public class OrderService {
         return orders.stream()
                 .map(OrderSummaryResponse::from)
                 .toList();
-
     }
-    //주문 단건 조회 (POS)
+
+    // 👉 주문 단건 조회 (POS)
     @Transactional(readOnly = true)
     public CreateOrderResponse getOrder(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. id=" + orderId));
 
-        int totalAmount = order.getItems().stream()
-                .mapToInt(item -> item.getOrderedPrice() * item.getQuantity())
-                .sum();
+        int totalAmount = order.calculateTotalAmount();
 
         return CreateOrderResponse.builder()
                 .orderId(order.getId())
@@ -125,6 +122,7 @@ public class OrderService {
                 .orderTime(order.getOrderTime())
                 .build();
     }
+
     // 👉 결제 처리 (POS에서 호출)
     public CreatePaymentResponse createPayment(Long orderId, CreatePaymentRequest request) {
 
@@ -141,13 +139,10 @@ public class OrderService {
         }
 
         // 3) 실제 주문 금액 계산
-        int totalAmount = order.getItems().stream()
-                .mapToInt(item -> item.getOrderedPrice() * item.getQuantity())
-                .sum();
-
+        int totalAmount = order.calculateTotalAmount();
         int paidAmount = request.getPaidAmount();
 
-        // 🔹 4) 결제 수단별 검증 로직 분리
+        // 4) 결제 수단별 검증
         if (request.getMethod() == PaymentMethod.CASH) {
             // 현금: 받은 금액 < 결제 금액 → 에러
             if (paidAmount < totalAmount) {
@@ -156,7 +151,7 @@ public class OrderService {
                 );
             }
         } else if (request.getMethod() == PaymentMethod.CARD) {
-            // 카드: 정확히 맞게만 받도록 (정책에 따라 조정 가능)
+            // 카드: 정확히 맞게만
             if (paidAmount != totalAmount) {
                 throw new IllegalArgumentException(
                         "카드 결제 금액이 주문 금액과 일치하지 않습니다. 주문 금액=" + totalAmount + ", 지불 금액=" + paidAmount
@@ -166,7 +161,7 @@ public class OrderService {
 
         int change = paidAmount - totalAmount;
         if (request.getMethod() == PaymentMethod.CARD) {
-            // 카드 결제는 거스름돈 0으로 처리
+            // 카드 결제는 거스름돈 0
             change = 0;
         }
 
@@ -176,9 +171,9 @@ public class OrderService {
         Payment savedPayment = paymentRepository.save(payment);
 
         // 6) 주문 상태 결제 완료로 변경
-        order.completePayment();      // WAITING -> PAID
+        order.completePayment();  // WAITING -> PAID
 
-        // 🔹 7) 테이블 비우기 (결제 완료 시)
+        // 7) 테이블 비우기
         StoreTable table = order.getStoreTable();
         if (table != null) {
             table.empty();
@@ -196,6 +191,4 @@ public class OrderService {
                 .paymentTime(savedPayment.getPaymentTime())
                 .build();
     }
-
-
 }

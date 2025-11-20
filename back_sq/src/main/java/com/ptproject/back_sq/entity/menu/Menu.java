@@ -23,8 +23,8 @@ public class Menu {
     @Column(nullable = false)
     private int cost;             // 원가
 
-    @Column(nullable = false)
-    private boolean isSoldOut = false; // 품절 여부
+    @Column(name = "sold_out", nullable = false)
+    private boolean soldOut = false; // 품절 여부
 
     private String imageUrl;      // 이미지 경로 (null 허용)
 
@@ -49,6 +49,6 @@ public class Menu {
     }
 
     public void changeSoldOut(boolean soldOut) {
-        this.isSoldOut = soldOut;
+        this.soldOut = soldOut;
     }
 }

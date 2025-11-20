@@ -33,7 +33,7 @@ public class MenuService {
     // 품절 아닌 메뉴만 조회 (Kiosk용)
     @Transactional(readOnly = true)
     public List<MenuResponse> getAvailableMenus() {
-        return menuRepository.findByIsSoldOutFalse().stream()
+        return menuRepository.findBySoldOutFalse().stream()
                 .map(MenuResponse::from)
                 .toList();
     }

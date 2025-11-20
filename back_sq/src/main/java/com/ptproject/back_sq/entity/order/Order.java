@@ -65,9 +65,14 @@ public class Order {
         this.status = OrderStatus.CANCELED;
     }
 
-
     public void addPayment(Payment payment) {
         this.payment = payment;
         payment.setOrder(this);
+    }
+    //총합 계산
+    public int calculateTotalAmount() {
+        return items.stream()
+                .mapToInt(i -> i.getOrderedPrice() * i.getQuantity())
+                .sum();
     }
 }

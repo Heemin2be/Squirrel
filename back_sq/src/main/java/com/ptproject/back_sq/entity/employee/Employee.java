@@ -40,4 +40,9 @@ public class Employee {
         this.hourlyWage = hourlyWage;
         this.role = role;
     }
+
+    public void changeHourlyWage(BigDecimal hourlyWage){
+        this.hourlyWage = hourlyWage;
+    }
+
 }

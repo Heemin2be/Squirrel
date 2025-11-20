@@ -1,4 +1,4 @@
-package com.ptproject.back_sq.controller;
+package com.ptproject.back_sq.controller.admin;
 
 import com.ptproject.back_sq.dto.employee.TimeRecordResponse;
 import com.ptproject.back_sq.entity.employee.TimeRecord;
