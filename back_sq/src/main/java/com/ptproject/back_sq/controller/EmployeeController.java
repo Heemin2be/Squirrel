@@ -1,20 +1,45 @@
 package com.ptproject.back_sq.controller;
 
-import com.ptproject.back_sq.repository.EmployeeRepository;
+import com.ptproject.back_sq.dto.employee.CreateEmployeeRequest;
+import com.ptproject.back_sq.dto.employee.EmployeeResponse;
+import com.ptproject.back_sq.dto.employee.UpdateEmployeeWageRequest;
+import com.ptproject.back_sq.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@PreAuthorize("hasRole('ADMIN')")
 public class EmployeeController {
 
-    private final EmployeeRepository employeeRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final EmployeeService employeeService;
 
-    // 생성자는 Lombok이 자동 생성
+    @GetMapping
+    public List<EmployeeResponse> getEmployees() {
+        return employeeService.getAllEmployees();
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public EmployeeResponse createEmployee(@RequestBody CreateEmployeeRequest request) {
+        return employeeService.createEmployee(request);
+    }
+
+    @PatchMapping("/{id}/wage")
+    public EmployeeResponse updateWage(@PathVariable Long id,
+                                       @RequestBody UpdateEmployeeWageRequest request) {
+        return employeeService.updateWage(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteEmployee(@PathVariable Long id) {
+        employeeService.deleteEmployee(id);
+    }
 }

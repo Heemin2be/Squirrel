@@ -73,7 +73,7 @@ public class PaymentService {
         Payment savedPayment = paymentRepository.save(payment);
 
         // 6) 주문 상태 결제 완료로 변경
-        order.completePayment();  // WAITING -> PAID
+        order.completePayment();  // PENDING -> PAID
 
         // 7) 테이블 비우기
         StoreTable table = order.getStoreTable();

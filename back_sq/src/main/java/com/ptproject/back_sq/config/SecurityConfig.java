@@ -5,6 +5,7 @@ import com.ptproject.back_sq.config.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -27,26 +28,23 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ 로그인은 항상 허용
-                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers("/ws/**", "/topic/**", "/app/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/menus/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tables/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
 
-                        // ✅ 지금 개발/테스트 중이라서 주요 API는 전부 풀어줌
-                        .requestMatchers(
-                                "/api/orders/**",
-                                "/api/menus/**",
-                                "/api/admin/stats/**",
-                                "/api/stats/**",
-                                "/api/tables/**",
-                                "/ws/**",
-                                "/topic/**",
-                                "/app/**"
-                        ).permitAll()
+                        .requestMatchers("/api/menus/**").hasRole("ADMIN")
+                        .requestMatchers("/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers("/api/employees/**").hasRole("ADMIN")
+                        .requestMatchers("/api/stats/**").hasRole("ADMIN")
 
-                        // 나머지 admin 전용 API 있으면 여기서만 ROLE_ADMIN 요구
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/orders/**").authenticated()
+                        .requestMatchers("/api/payments/**").authenticated()
+                        .requestMatchers("/api/attendance/**").authenticated()
 
-                        // 그 외는 일단 허용
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider),

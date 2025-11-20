@@ -4,6 +4,7 @@ import com.ptproject.back_sq.dto.stats.DailySalesResponse;
 import com.ptproject.back_sq.dto.stats.HourlyOrderCountResponse;
 import com.ptproject.back_sq.dto.stats.MonthlySalesResponse;
 import com.ptproject.back_sq.dto.stats.TopMenuResponse;
+import com.ptproject.back_sq.dto.stats.SalesStatsResponse;
 import com.ptproject.back_sq.entity.menu.Menu;
 import com.ptproject.back_sq.entity.order.Order;
 import com.ptproject.back_sq.entity.order.OrderItem;
@@ -167,6 +168,44 @@ public class StatsService {
                 .map(item -> BigDecimal.valueOf(
                         (long) item.getOrderedPrice() * item.getQuantity()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * 기간 매출 요약
+     */
+    public SalesStatsResponse getSalesBetween(LocalDate startDate, LocalDate endDate) {
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("endDate는 startDate 이후여야 합니다.");
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime endExclusive = endDate.plusDays(1).atStartOfDay();
+
+        List<Order> paidOrders = orderRepository.findByStatusAndOrderTimeBetween(
+                OrderStatus.PAID, start, endExclusive);
+
+        Map<LocalDate, List<Order>> byDate = paidOrders.stream()
+                .collect(Collectors.groupingBy(o -> o.getOrderTime().toLocalDate()));
+
+        List<DailySalesResponse> breakdown = byDate.entrySet().stream()
+                .map(entry -> {
+                    BigDecimal total = entry.getValue().stream()
+                            .map(this::calculateOrderTotal)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    long count = entry.getValue().size();
+                    return new DailySalesResponse(entry.getKey(), total, count);
+                })
+                .sorted(Comparator.comparing(DailySalesResponse::getDate))
+                .toList();
+
+        BigDecimal totalSales = breakdown.stream()
+                .map(DailySalesResponse::getTotalSales)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long totalOrders = breakdown.stream()
+                .mapToLong(DailySalesResponse::getOrderCount)
+                .sum();
+
+        return new SalesStatsResponse(startDate, endDate, totalSales, totalOrders, breakdown);
     }
 
     /**

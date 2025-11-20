@@ -12,21 +12,20 @@ import java.time.LocalDateTime;
 @Builder
 public class OrderSummaryResponse {
     private Long orderId;
-    private int tableNumber;
+    private String tableNumber;
     private OrderStatus status;
-    private int totalAmount;
+    private int totalPrice;
     private LocalDateTime orderTime;
 
     public static OrderSummaryResponse from(Order order){
-        int amount = 0;
-        if (order.getPayment() != null){
-            amount = order.getPayment().getTotalAmount();
-        }
+        int amount = order.getPayment() != null
+                ? order.getPayment().getTotalAmount()
+                : order.calculateTotalAmount();
         return OrderSummaryResponse.builder()
                 .orderId(order.getId())
-                .tableNumber(order.getStoreTable().getTableNumber())
+                .tableNumber(String.valueOf(order.getStoreTable().getTableNumber()))
                 .status(order.getStatus())
-                .totalAmount(amount)
+                .totalPrice(amount)
                 .orderTime(order.getOrderTime())
                 .build();
     }

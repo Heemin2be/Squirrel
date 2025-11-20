@@ -11,6 +11,7 @@ import com.ptproject.back_sq.service.OrderService;
 import com.ptproject.back_sq.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -27,6 +28,7 @@ public class OrderController {
 
     // 👉 주문 생성 (키오스크)
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public CreateOrderResponse createOrder(@RequestBody CreateOrderRequest request) {
         return orderService.createOrder(request);
     }
@@ -43,7 +45,7 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     public CreateOrderResponse getOrder(@PathVariable Long orderId){
-        return orderService.getOrder(orderId);   // ✅ 여기만 수정!
+        return orderService.getOrder(orderId);
     }
 
     // 👉 결제 처리 (POS에서 사용)

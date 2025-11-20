@@ -3,7 +3,6 @@ package com.ptproject.back_sq.service;
 import com.ptproject.back_sq.dto.menu.MenuRequest;
 import com.ptproject.back_sq.dto.menu.MenuResponse;
 import com.ptproject.back_sq.dto.menu.SoldOutRequest;
-import com.ptproject.back_sq.dto.websocket.MenuDeletePayload;
 import com.ptproject.back_sq.dto.websocket.MenuUpdatePayload;
 import com.ptproject.back_sq.dto.websocket.WebSocketMessage;
 import com.ptproject.back_sq.entity.menu.Category;
@@ -27,10 +26,17 @@ public class MenuService {
     private final CategoryRepository categoryRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
+    private static final String MENU_UPDATE_TOPIC = "/topic/menu-update";
+    private static final String MENU_UPDATE_TYPE = "menu-update";
+
     // 전체 메뉴 조회 (POS용)
     @Transactional(readOnly = true)
-    public List<MenuResponse> getAllMenus() {
-        return menuRepository.findAll().stream()
+    public List<MenuResponse> getMenus(Long categoryId) {
+        List<Menu> menus = categoryId == null
+                ? menuRepository.findAll()
+                : menuRepository.findByCategoryId(categoryId);
+
+        return menus.stream()
                 .map(MenuResponse::from)
                 .toList();
     }
@@ -66,10 +72,7 @@ public class MenuService {
         Menu saved = menuRepository.save(menu);
 
         // 👉 WebSocket: 메뉴 생성 알림
-        MenuUpdatePayload payload = MenuUpdatePayload.from(saved);
-        WebSocketMessage<MenuUpdatePayload> msg =
-                new WebSocketMessage<>("menu-created", payload);
-        messagingTemplate.convertAndSend("/topic/menu-update", msg);
+        broadcastMenuUpdate(MenuUpdatePayload.from(saved));
 
         return MenuResponse.from(saved);
     }
@@ -90,10 +93,7 @@ public class MenuService {
         );
 
         // 👉 WebSocket: 메뉴 수정 알림
-        MenuUpdatePayload payload = MenuUpdatePayload.from(menu);
-        WebSocketMessage<MenuUpdatePayload> msg =
-                new WebSocketMessage<>("menu-updated", payload);
-        messagingTemplate.convertAndSend("/topic/menu-update", msg);
+        broadcastMenuUpdate(MenuUpdatePayload.from(menu));
 
         return MenuResponse.from(menu);
     }
@@ -106,10 +106,7 @@ public class MenuService {
         menu.changeSoldOut(request.isSoldOut());
 
         // 👉 WebSocket: 품절 변경 알림
-        MenuUpdatePayload payload = MenuUpdatePayload.from(menu);
-        WebSocketMessage<MenuUpdatePayload> msg =
-                new WebSocketMessage<>("menu-soldout-changed", payload);
-        messagingTemplate.convertAndSend("/topic/menu-update", msg);
+        broadcastMenuUpdate(MenuUpdatePayload.from(menu));
 
         return MenuResponse.from(menu);
     }
@@ -122,10 +119,7 @@ public class MenuService {
         menuRepository.deleteById(id);
 
         // 👉 WebSocket: 메뉴 삭제 알림
-        MenuDeletePayload payload = new MenuDeletePayload(id);
-        WebSocketMessage<MenuDeletePayload> msg =
-                new WebSocketMessage<>("menu-deleted", payload);
-        messagingTemplate.convertAndSend("/topic/menu-update", msg);
+        broadcastMenuUpdate(MenuUpdatePayload.deleted(id));
     }
 
     // 카테고리 조회 공통 로직
@@ -135,5 +129,11 @@ public class MenuService {
         }
         return categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found: " + categoryId));
+    }
+
+    private void broadcastMenuUpdate(MenuUpdatePayload payload) {
+        WebSocketMessage<MenuUpdatePayload> msg =
+                new WebSocketMessage<>(MENU_UPDATE_TYPE, payload);
+        messagingTemplate.convertAndSend(MENU_UPDATE_TOPIC, msg);
     }
 }

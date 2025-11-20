@@ -1,5 +1,6 @@
 package com.ptproject.back_sq.dto.menu;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ptproject.back_sq.entity.menu.Menu;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -12,6 +13,7 @@ public class MenuResponse {
     private String name;
     private int price;
     private int cost;
+    @JsonProperty("isSoldOut")
     private boolean soldOut;
     private String imageUrl;
     private Long categoryId;

@@ -7,21 +7,21 @@ import java.time.LocalDateTime;
 
 @Data
 public class NewOrderPayload {
-    private Long id;
+    private Long orderId;
     private String status;
-    private Integer tableNumber;
+    private String tableNumber;
     private LocalDateTime orderTime;
-    private Integer totalAmount;
+    private Integer totalPrice;
 
     public static NewOrderPayload from(Order order) {
         NewOrderPayload p = new NewOrderPayload();
-        p.setId(order.getId());
+        p.setOrderId(order.getId());
         p.setStatus(order.getStatus().name());
         p.setTableNumber(order.getStoreTable() != null
-                ? order.getStoreTable().getTableNumber()
+                ? String.valueOf(order.getStoreTable().getTableNumber())
                 : null);
         p.setOrderTime(order.getOrderTime());
-        p.setTotalAmount(order.calculateTotalAmount());
+        p.setTotalPrice(order.calculateTotalAmount());
         return p;
     }
 }

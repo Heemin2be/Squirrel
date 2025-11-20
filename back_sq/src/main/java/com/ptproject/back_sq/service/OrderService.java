@@ -41,7 +41,7 @@ public class OrderService {
         StoreTable table = storeTableRepository.findById(request.getTableId())
                 .orElseThrow(() -> new EntityNotFoundException("테이블을 찾을 수 없습니다. id=" + request.getTableId()));
 
-        // 2) 주문 엔티티 생성 (status = WAITING, orderTime = now)
+        // 2) 주문 엔티티 생성 (status = PENDING, orderTime = now)
         Order order = new Order(table);
 
         // 3) 주문 항목 추가
@@ -71,17 +71,7 @@ public class OrderService {
                 new WebSocketMessage<>("new-order", payload);
         messagingTemplate.convertAndSend("/topic/new-order", msg);
 
-        // 6) 총 금액 계산
-        int totalAmount = saved.calculateTotalAmount();
-
-        // 7) 응답 DTO 생성
-        return CreateOrderResponse.builder()
-                .orderId(saved.getId())
-                .tableNumber(saved.getStoreTable().getTableNumber())
-                .status(saved.getStatus())
-                .totalAmount(totalAmount)
-                .orderTime(saved.getOrderTime())
-                .build();
+        return CreateOrderResponse.from(saved);
     }
 
     // 👉 POS 주문 목록 조회
@@ -122,15 +112,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
 
-        int totalAmount = order.calculateTotalAmount();
-
-        return CreateOrderResponse.builder()
-                .orderId(order.getId())
-                .tableNumber(order.getStoreTable().getTableNumber())
-                .status(order.getStatus())
-                .totalAmount(totalAmount)
-                .orderTime(order.getOrderTime())
-                .build();
+        return CreateOrderResponse.from(order);
     }
 
     // ❌ 결제 로직은 PaymentService로 이사 완료

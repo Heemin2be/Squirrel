@@ -1,5 +1,6 @@
 package com.ptproject.back_sq.service;
 
+import com.ptproject.back_sq.dto.employee.TimeRecordResponse;
 import com.ptproject.back_sq.entity.employee.Employee;
 import com.ptproject.back_sq.entity.employee.TimeRecord;
 import com.ptproject.back_sq.repository.EmployeeRepository;
@@ -7,6 +8,9 @@ import com.ptproject.back_sq.repository.TimeRecordRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -41,5 +45,18 @@ public class TimeRecordService {
 
         last.clockOut();
         timeRecordRepository.save(last);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TimeRecordResponse> getRecords(Long employeeId) {
+        return timeRecordRepository.findByEmployeeIdOrderByClockInDesc(employeeId).stream()
+                .map(tr -> new TimeRecordResponse(
+                        tr.getId(),
+                        tr.getEmployee().getId(),
+                        tr.getEmployee().getName(),
+                        tr.getClockIn(),
+                        tr.getClockOut()
+                ))
+                .toList();
     }
 }

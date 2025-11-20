@@ -3,19 +3,22 @@ package com.ptproject.back_sq.controller.admin;
 import com.ptproject.back_sq.dto.stats.DailySalesResponse;
 import com.ptproject.back_sq.dto.stats.HourlyOrderCountResponse;
 import com.ptproject.back_sq.dto.stats.MonthlySalesResponse;
+import com.ptproject.back_sq.dto.stats.SalesStatsResponse;
 import com.ptproject.back_sq.dto.stats.TopMenuResponse;
 import com.ptproject.back_sq.service.StatsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/stats")
+@RequestMapping("/api/stats")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class StatsController {
 
     private final StatsService statsService;
@@ -61,5 +64,18 @@ public class StatsController {
             LocalDate date
     ) {
         return statsService.getHourlyOrders(date);
+    }
+
+    // 기간 매출
+    @GetMapping("/sales")
+    public SalesStatsResponse getSalesBetween(
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate endDate
+    ) {
+        return statsService.getSalesBetween(startDate, endDate);
     }
 }

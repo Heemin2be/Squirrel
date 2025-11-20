@@ -25,7 +25,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OrderStatus status = OrderStatus.WAITING;
+    private OrderStatus status = OrderStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_table_id", nullable = false)
@@ -41,7 +41,7 @@ public class Order {
     public Order(StoreTable storeTable) {
         this.storeTable = storeTable;
         this.orderTime = LocalDateTime.now();
-        this.status = OrderStatus.WAITING;
+        this.status = OrderStatus.PENDING;
     }
 
     public void addItem(OrderItem item) {
@@ -51,7 +51,7 @@ public class Order {
 
     //결제 완료
     public void completePayment() {
-        if (this.status != OrderStatus.WAITING){
+        if (this.status != OrderStatus.PENDING){
             throw new IllegalStateException("결제 가능한 상태가 아닙니다.");
         }
         this.status = OrderStatus.PAID;
