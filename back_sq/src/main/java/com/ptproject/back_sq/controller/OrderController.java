@@ -6,6 +6,7 @@ import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
 import com.ptproject.back_sq.dto.payment.CreatePaymentRequest;
 import com.ptproject.back_sq.dto.payment.CreatePaymentResponse;
 import com.ptproject.back_sq.dto.payment.PaymentSummaryResponse;
+import com.ptproject.back_sq.dto.order.ReceiptResponse;
 import com.ptproject.back_sq.entity.order.OrderStatus;
 import com.ptproject.back_sq.service.OrderService;
 import com.ptproject.back_sq.service.PaymentService;
@@ -46,6 +47,11 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public CreateOrderResponse getOrder(@PathVariable Long orderId){
         return orderService.getOrder(orderId);
+    }
+
+    @GetMapping("/{orderId}/receipt")
+    public ReceiptResponse getReceipt(@PathVariable Long orderId) {
+        return orderService.getReceipt(orderId);
     }
 
     // 👉 결제 처리 (POS에서 사용)

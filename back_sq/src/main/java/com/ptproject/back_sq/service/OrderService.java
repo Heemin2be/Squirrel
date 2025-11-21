@@ -3,15 +3,18 @@ package com.ptproject.back_sq.service;
 import com.ptproject.back_sq.dto.order.CreateOrderRequest;
 import com.ptproject.back_sq.dto.order.CreateOrderResponse;
 import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
+import com.ptproject.back_sq.dto.order.ReceiptResponse;
 import com.ptproject.back_sq.dto.websocket.NewOrderPayload;
 import com.ptproject.back_sq.dto.websocket.WebSocketMessage;
 import com.ptproject.back_sq.entity.menu.Menu;
 import com.ptproject.back_sq.entity.order.Order;
 import com.ptproject.back_sq.entity.order.OrderItem;
 import com.ptproject.back_sq.entity.order.OrderStatus;
+import com.ptproject.back_sq.entity.order.Payment;
 import com.ptproject.back_sq.entity.order.StoreTable;
 import com.ptproject.back_sq.repository.MenuRepository;
 import com.ptproject.back_sq.repository.OrderRepository;
+import com.ptproject.back_sq.repository.PaymentRepository;
 import com.ptproject.back_sq.repository.StoreTableRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ public class OrderService {
     private final StoreTableRepository storeTableRepository;
     private final MenuRepository menuRepository;
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
     private final SimpMessagingTemplate messagingTemplate; // ⭐ WebSocket 전송용
 
     // 👉 주문 생성 (키오스크에서 호출)
@@ -113,6 +117,40 @@ public class OrderService {
                 .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
 
         return CreateOrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public ReceiptResponse getReceipt(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
+
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("결제 내역이 존재하지 않습니다. orderId=" + orderId));
+
+        List<ReceiptResponse.ReceiptItem> items = order.getItems().stream()
+                .map(item -> new ReceiptResponse.ReceiptItem(
+                        item.getMenu().getName(),
+                        item.getQuantity(),
+                        item.getOrderedPrice(),
+                        item.getOrderedPrice() * item.getQuantity()
+                ))
+                .toList();
+
+        String tableNumber = order.getStoreTable() != null
+                ? String.valueOf(order.getStoreTable().getTableNumber())
+                : null;
+
+        return new ReceiptResponse(
+                order.getId(),
+                tableNumber,
+                order.getOrderTime(),
+                payment.getPaymentTime(),
+                payment.getMethod().name(),
+                payment.getTotalAmount(),
+                payment.getPaidAmount(),
+                payment.getChangeAmount(),
+                items
+        );
     }
 
     // ❌ 결제 로직은 PaymentService로 이사 완료

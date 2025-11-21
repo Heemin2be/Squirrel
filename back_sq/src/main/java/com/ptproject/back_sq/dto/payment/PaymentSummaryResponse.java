@@ -15,6 +15,8 @@ public class PaymentSummaryResponse {
     private int totalAmount;
     private String method; //"CARD","CASH"
     private String status; //"COMPLETED","CANCELED"
+    private int paidAmount;
+    private int change;
 
     public static PaymentSummaryResponse from(Payment payment) {
         return PaymentSummaryResponse.builder()
@@ -24,6 +26,8 @@ public class PaymentSummaryResponse {
                 .method(payment.getMethod().name())
                 .paymentTime(payment.getPaymentTime())
                 .status(payment.getStatus() != null ? payment.getStatus().name() : null)
+                .paidAmount(payment.getPaidAmount())
+                .change(payment.getChangeAmount())
                 .build();
     }
 }

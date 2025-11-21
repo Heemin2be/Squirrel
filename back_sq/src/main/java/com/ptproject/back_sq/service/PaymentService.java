@@ -68,7 +68,7 @@ public class PaymentService {
         }
 
         // 5) Payment 엔티티 생성 및 저장
-        Payment payment = new Payment(totalAmount, request.getMethod());
+        Payment payment = new Payment(totalAmount, paidAmount, change, request.getMethod());
         payment.setOrder(order);
         Payment savedPayment = paymentRepository.save(payment);
 

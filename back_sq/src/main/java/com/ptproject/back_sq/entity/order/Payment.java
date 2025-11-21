@@ -25,6 +25,14 @@ public class Payment {
     @Column(name = "total_amount", nullable = false)
     private int totalAmount;
 
+    // 손님이 실제 지불한 금액
+    @Column(name = "paid_amount", nullable = false)
+    private int paidAmount;
+
+    // 거스름돈
+    @Column(name = "change_amount", nullable = false)
+    private int changeAmount;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentMethod method;
@@ -38,9 +46,11 @@ public class Payment {
     @JoinColumn(name = "order_id", nullable = false, unique = true)
     private Order order;
 
-    public Payment(int totalAmount, PaymentMethod method) {
+    public Payment(int totalAmount, int paidAmount, int changeAmount, PaymentMethod method) {
         this.paymentTime = LocalDateTime.now();
         this.totalAmount = totalAmount;
+        this.paidAmount = paidAmount;
+        this.changeAmount = changeAmount;
         this.method = method;
         this.status = PaymentStatus.COMPLETED;
     }
@@ -67,5 +77,13 @@ public class Payment {
     }
     public PaymentStatus getStatus(){
         return status;
+    }
+
+    public int getPaidAmount() {
+        return paidAmount;
+    }
+
+    public int getChangeAmount() {
+        return changeAmount;
     }
 }
