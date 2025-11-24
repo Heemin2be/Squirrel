@@ -7,4 +7,10 @@ import java.util.List;
 
 public interface MenuRepository extends JpaRepository<Menu,Long> {
     List<Menu> findBySoldOutFalse();
+
+    List<Menu> findByCategoryId(Long categoryId);
+
+    List<Menu> findByCategoryIdAndSoldOutFalse(Long categoryId);
+
+    boolean existsByCategoryId(Long categoryId);
 }

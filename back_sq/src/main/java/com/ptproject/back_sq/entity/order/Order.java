@@ -1,9 +1,10 @@
 package com.ptproject.back_sq.entity.order;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.boot.model.naming.IllegalIdentifierException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,38 +13,66 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor
-@Table(name="orders")
+@Table(name = "`order`") // SQL 예약어라 백틱 필요
 public class Order {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    //어떤 테이블에서 주문했는지
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "store_table_id")
-    private StoreTable storeTable;
-
-    @JsonIgnore //엔터티 직접 반환 시 순환/프록시 방지용
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
-    private List<OrderItem> orderItems = new ArrayList<>();
+    @Column(nullable = false)
+    private LocalDateTime orderTime;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private OrderStatus status = OrderStatus.WAITING;
+    @Column(nullable = false)
+    private OrderStatus status = OrderStatus.PENDING;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_table_id", nullable = false)
+    private StoreTable storeTable;
 
-    public Order(StoreTable storeTable){
+    @JsonManagedReference
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
+
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Payment payment;
+
+    public Order(StoreTable storeTable) {
         this.storeTable = storeTable;
-        this.status = OrderStatus.WAITING;
-        this.createdAt = LocalDateTime.now();
+        this.orderTime = LocalDateTime.now();
+        this.status = OrderStatus.PENDING;
     }
 
-    public void addItem(OrderItem item){
-        orderItems.add(item);
+    public void addItem(OrderItem item) {
+        items.add(item);
+        item.setOrder(this);
     }
 
-    public void changeStatus(OrderStatus status){
-        this.status = status;
+    //결제 완료
+    public void completePayment() {
+        if (this.status != OrderStatus.PENDING){
+            throw new IllegalStateException("결제 가능한 상태가 아닙니다.");
+        }
+        this.status = OrderStatus.PAID;
+    }
+
+    //결제 취소
+    public void cancelPayment(){
+        if(this.status != OrderStatus.PAID){
+            throw new IllegalStateException("결제 취소는 결제 완료 상태에서만 가능합니다.");
+        }
+        this.status = OrderStatus.CANCELED;
+    }
+
+    public void addPayment(Payment payment) {
+        this.payment = payment;
+        payment.setOrder(this);
+    }
+    //총합 계산
+    public int calculateTotalAmount() {
+        return items.stream()
+                .mapToInt(i -> i.getOrderedPrice() * i.getQuantity())
+                .sum();
     }
 }

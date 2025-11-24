@@ -1,62 +1,157 @@
-// OrderService.java
 package com.ptproject.back_sq.service;
 
 import com.ptproject.back_sq.dto.order.CreateOrderRequest;
 import com.ptproject.back_sq.dto.order.CreateOrderResponse;
+import com.ptproject.back_sq.dto.order.OrderSummaryResponse;
+import com.ptproject.back_sq.dto.order.ReceiptResponse;
+import com.ptproject.back_sq.dto.websocket.NewOrderPayload;
+import com.ptproject.back_sq.dto.websocket.WebSocketMessage;
 import com.ptproject.back_sq.entity.menu.Menu;
 import com.ptproject.back_sq.entity.order.Order;
 import com.ptproject.back_sq.entity.order.OrderItem;
+import com.ptproject.back_sq.entity.order.OrderStatus;
+import com.ptproject.back_sq.entity.order.Payment;
 import com.ptproject.back_sq.entity.order.StoreTable;
 import com.ptproject.back_sq.repository.MenuRepository;
 import com.ptproject.back_sq.repository.OrderRepository;
+import com.ptproject.back_sq.repository.PaymentRepository;
 import com.ptproject.back_sq.repository.StoreTableRepository;
-import jakarta.transaction.Transactional;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class OrderService {
 
-    private final OrderRepository orderRepository;
     private final StoreTableRepository storeTableRepository;
     private final MenuRepository menuRepository;
+    private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
+    private final SimpMessagingTemplate messagingTemplate; // ⭐ WebSocket 전송용
 
-    public OrderService(OrderRepository orderRepository,
-                        StoreTableRepository storeTableRepository,
-                        MenuRepository menuRepository) {
-        this.orderRepository = orderRepository;
-        this.storeTableRepository = storeTableRepository;
-        this.menuRepository = menuRepository;
-    }
-
+    // 👉 주문 생성 (키오스크에서 호출)
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
-        // 1. 테이블 찾거나 생성
-        StoreTable table = storeTableRepository
-                .findByTableNumber(request.getTableNumber())
-                .orElseGet(() -> storeTableRepository.save(new StoreTable(request.getTableNumber())));
 
-        // 2. 주문 생성
+        // 1) 테이블 조회
+        StoreTable table = storeTableRepository.findById(request.getTableId())
+                .orElseThrow(() -> new EntityNotFoundException("테이블을 찾을 수 없습니다. id=" + request.getTableId()));
+
+        // 2) 주문 엔티티 생성 (status = PENDING, orderTime = now)
         Order order = new Order(table);
 
-        int totalAmount = 0;
-
-        // 3. 주문 아이템 추가
-        for (CreateOrderRequest.Item itemReq : request.getItems()) {
+        // 3) 주문 항목 추가
+        for (CreateOrderRequest.OrderItemRequest itemReq : request.getItems()) {
             Menu menu = menuRepository.findById(itemReq.getMenuId())
-                    .orElseThrow(() -> new IllegalArgumentException("메뉴 없음: " + itemReq.getMenuId()));
+                    .orElseThrow(() -> new EntityNotFoundException("메뉴를 찾을 수 없습니다. id=" + itemReq.getMenuId()));
 
-            int price = menu.getPrice();
-            int quantity = itemReq.getQuantity();
+            // 🔹 품절 체크
+            if (menu.isSoldOut()) {
+                throw new IllegalStateException("품절된 메뉴입니다. id=" + menu.getId());
+            }
 
-            OrderItem orderItem = new OrderItem(order, menu, quantity, price);
+            OrderItem orderItem = new OrderItem(menu, itemReq.getQuantity());
             order.addItem(orderItem);
-
-            totalAmount += price * quantity;
         }
 
-        // 4. 저장
+        // 4) 테이블 상태를 사용 중으로 변경
+        table.occupy();
+        // 영속 상태라 save 안 해도 flush 시점에 같이 반영됨
+
+        // 5) 주문 저장
         Order saved = orderRepository.save(order);
 
-        return new CreateOrderResponse(saved.getId(), totalAmount);
+        // ⭐ WebSocket: 신규 주문 알림 (POS로 브로드캐스트)
+        NewOrderPayload payload = NewOrderPayload.from(saved);
+        WebSocketMessage<NewOrderPayload> msg =
+                new WebSocketMessage<>("new-order", payload);
+        messagingTemplate.convertAndSend("/topic/new-order", msg);
+
+        return CreateOrderResponse.from(saved);
     }
+
+    // 👉 POS 주문 목록 조회
+    @Transactional(readOnly = true)
+    public List<OrderSummaryResponse> getOrders(OrderStatus status, LocalDate date) {
+
+        List<Order> orders;
+
+        // status + date
+        if (status != null && date != null) {
+            LocalDateTime start = date.atStartOfDay();
+            LocalDateTime end = date.atTime(LocalTime.MAX);
+            orders = orderRepository.findByStatusAndOrderTimeBetween(status, start, end);
+        }
+        // status 만
+        else if (status != null) {
+            orders = orderRepository.findByStatus(status);
+        }
+        // date 만
+        else if (date != null) {
+            LocalDateTime start = date.atStartOfDay();
+            LocalDateTime end = date.atTime(LocalTime.MAX);
+            orders = orderRepository.findByOrderTimeBetween(start, end);
+        }
+        // 둘 다 없음 → 전체 (최근 순)
+        else {
+            orders = orderRepository.findAllByOrderByOrderTimeDesc();
+        }
+
+        return orders.stream()
+                .map(OrderSummaryResponse::from)
+                .toList();
+    }
+
+    // 👉 주문 단건 조회 (POS)
+    @Transactional(readOnly = true)
+    public CreateOrderResponse getOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
+
+        return CreateOrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public ReceiptResponse getReceipt(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
+
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("결제 내역이 존재하지 않습니다. orderId=" + orderId));
+
+        List<ReceiptResponse.ReceiptItem> items = order.getItems().stream()
+                .map(item -> new ReceiptResponse.ReceiptItem(
+                        item.getMenu().getName(),
+                        item.getQuantity(),
+                        item.getOrderedPrice(),
+                        item.getOrderedPrice() * item.getQuantity()
+                ))
+                .toList();
+
+        String tableNumber = order.getStoreTable() != null
+                ? String.valueOf(order.getStoreTable().getTableNumber())
+                : null;
+
+        return new ReceiptResponse(
+                order.getId(),
+                tableNumber,
+                order.getOrderTime(),
+                payment.getPaymentTime(),
+                payment.getMethod().name(),
+                payment.getTotalAmount(),
+                payment.getPaidAmount(),
+                payment.getChangeAmount(),
+                items
+        );
+    }
+
+    // ❌ 결제 로직은 PaymentService로 이사 완료
 }

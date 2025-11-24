@@ -1,0 +1,62 @@
+package com.ptproject.back_sq.service;
+
+import com.ptproject.back_sq.dto.employee.TimeRecordResponse;
+import com.ptproject.back_sq.entity.employee.Employee;
+import com.ptproject.back_sq.entity.employee.TimeRecord;
+import com.ptproject.back_sq.repository.EmployeeRepository;
+import com.ptproject.back_sq.repository.TimeRecordRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class TimeRecordService {
+
+    private final TimeRecordRepository timeRecordRepository;
+    private final EmployeeRepository employeeRepository;
+
+    public void clockIn(Long employeeId) {
+        Employee emp = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new EntityNotFoundException("직원을 찾을 수 없습니다. id=" + employeeId));
+
+        // 이미 출근 중인지 체크 (마지막 기록에 clockOut이 비어 있으면 출근 중)
+        timeRecordRepository.findByEmployeeIdOrderByClockInDesc(employeeId)
+                .stream()
+                .filter(tr -> tr.getClockOut() == null)
+                .findFirst()
+                .ifPresent(tr -> {
+                    throw new IllegalStateException("이미 출근 중입니다.");
+                });
+
+        timeRecordRepository.save(new TimeRecord(emp));
+    }
+
+    public void clockOut(Long employeeId) {
+        TimeRecord last = timeRecordRepository
+                .findByEmployeeIdOrderByClockInDesc(employeeId)
+                .stream()
+                .filter(tr -> tr.getClockOut() == null)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("출근 중인 기록이 없습니다."));
+
+        last.clockOut();
+        timeRecordRepository.save(last);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TimeRecordResponse> getRecords(Long employeeId) {
+        return timeRecordRepository.findByEmployeeIdOrderByClockInDesc(employeeId).stream()
+                .map(tr -> new TimeRecordResponse(
+                        tr.getId(),
+                        tr.getEmployee().getId(),
+                        tr.getEmployee().getName(),
+                        tr.getClockIn(),
+                        tr.getClockOut()
+                ))
+                .toList();
+    }
+}
