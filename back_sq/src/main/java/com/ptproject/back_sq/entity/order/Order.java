@@ -57,10 +57,10 @@ public class Order {
         this.status = OrderStatus.PAID;
     }
 
-    //결제 취소
-    public void cancelPayment(){
-        if(this.status != OrderStatus.PAID){
-            throw new IllegalStateException("결제 취소는 결제 완료 상태에서만 가능합니다.");
+    // 주문 취소 (PENDING 상태에서)
+    public void cancel(){
+        if(this.status != OrderStatus.PENDING){
+            throw new IllegalStateException("대기 중인 주문만 취소할 수 있습니다.");
         }
         this.status = OrderStatus.CANCELED;
     }
@@ -69,6 +69,18 @@ public class Order {
         this.payment = payment;
         payment.setOrder(this);
     }
+
+    // 환불 (결제 완료 상태에서)
+    public void refund(){
+        if(this.status != OrderStatus.PAID){
+            throw new IllegalStateException("결제 완료 상태의 주문만 환불할 수 있습니다.");
+        }
+        this.status = OrderStatus.CANCELED; // Or a new status like REFUNDED
+        if (this.storeTable != null) {
+            this.storeTable.empty(); // Empty the table on refund
+        }
+    }
+
     //총합 계산
     public int calculateTotalAmount() {
         return items.stream()

@@ -19,10 +19,15 @@ function KioskPage() {
 
   const stompClientRef = useRef(null);
   const activeCategoryRef = useRef(activeCategory);
+  const currentTableRef = useRef(currentTable);
 
   useEffect(() => {
     activeCategoryRef.current = activeCategory;
   }, [activeCategory]);
+  
+  useEffect(() => {
+    currentTableRef.current = currentTable;
+  }, [currentTable]);
 
   // Helper function to sort menus (available first, then sold-out)
   const sortMenus = (menuArray) => {
@@ -108,6 +113,18 @@ function KioskPage() {
             
             return sortMenus(newMenusState);
           });
+        }
+      });
+
+      // New subscription for order status changes
+      client.subscribe('/topic/order-status', message => {
+        const statusMsg = JSON.parse(message.body);
+        if (statusMsg.type === 'order-status-changed' && statusMsg.payload.status === 'PAID') {
+          const payload = statusMsg.payload;
+          if (currentTableRef.current && String(currentTableRef.current.tableNumber) === payload.tableNumber) {
+            alert('결제가 완료되었습니다. 잠시 후 초기 화면으로 돌아갑니다.');
+            window.location.reload();
+          }
         }
       });
     };
@@ -205,8 +222,7 @@ function KioskPage() {
     try {
       await apiClient.post('/orders', orderData);
       alert(`주문이 성공적으로 완료되었습니다.\n테이블 ${currentTable.tableNumber}로 가져다 드리겠습니다.`);
-      navigate('/kiosk', { replace: true });
-      setCart([]);
+      window.location.reload();
     } catch (error) {
       console.error('Error creating order:', error);
       alert('주문 생성에 실패했습니다. 다시 시도해주세요.');

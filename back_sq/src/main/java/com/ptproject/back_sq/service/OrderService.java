@@ -154,4 +154,29 @@ public class OrderService {
     }
 
     // ❌ 결제 로직은 PaymentService로 이사 완료
+
+    // 👉 주문 취소 (POS에서 호출)
+    public void cancelOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("주문을 찾을 수 없습니다. id=" + orderId));
+
+        order.cancel(); // Use the newly created cancel() method
+
+        // Check if there are other pending orders for this table (excluding the one just cancelled)
+        StoreTable table = order.getStoreTable();
+        boolean hasOtherPendingOrders = orderRepository.findByStoreTableAndStatus(table, OrderStatus.PENDING)
+                .stream()
+                .filter(o -> !o.getId().equals(orderId)) // Exclude the current order being cancelled
+                .findAny()
+                .isPresent();
+
+        if (!hasOtherPendingOrders) {
+            table.empty(); // If no other pending orders, set table status to EMPTY
+        }
+
+        // ⭐ WebSocket: 주문 상태 변경 알림 (POS로 브로드캐스트)
+        // Re-fetch data on frontend after cancellation as a temporary solution.
+        // A more robust solution would be to send a WebSocket message here.
+        // For now, rely on PosPage fetchData() called after modal close or payment success.
+    }
 }

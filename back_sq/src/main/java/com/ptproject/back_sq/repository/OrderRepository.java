@@ -2,6 +2,7 @@ package com.ptproject.back_sq.repository;
 
 import com.ptproject.back_sq.entity.order.Order;
 import com.ptproject.back_sq.entity.order.OrderStatus;
+import com.ptproject.back_sq.entity.order.StoreTable;
 import org.springframework.cglib.core.Local;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -18,5 +19,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             LocalDateTime end
     );
     List<Order> findAllByOrderByOrderTimeDesc();
+    List<Order> findByStoreTableAndStatus(StoreTable storeTable, OrderStatus status);
 }
 

@@ -110,6 +110,23 @@ function MenuManagementPage() {
     }
   };
 
+  const handleDeleteMenu = async (menuId) => {
+    if (!window.confirm('정말로 이 메뉴를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/menus/${menuId}`);
+      alert('메뉴가 성공적으로 삭제되었습니다.');
+      // Re-fetch menus to update the list
+      const response = await apiClient.get('/menus');
+      setMenus(response.data);
+    } catch (error) {
+      console.error('Error deleting menu:', error);
+      alert(`메뉴 삭제에 실패했습니다: ${error.response?.data?.message || '오류가 발생했습니다.'}`);
+    }
+  };
+
   if (loading) {
     return <div className="management-container"><h1>로딩 중...</h1></div>;
   }
@@ -202,12 +219,15 @@ function MenuManagementPage() {
               <span>{menu.price.toLocaleString()}원</span>
               <span>{menu.categoryName}</span>
               <span className={menu.isSoldOut ? 'status-text-sold-out' : 'status-text-available'}>{menu.isSoldOut ? '품절' : '판매중'}</span>
-              <button 
-                onClick={() => handleToggleSoldOut(menu.id, menu.isSoldOut)}
-                className={menu.isSoldOut ? 'status-available' : 'status-sold-out'}
-              >
-                {menu.isSoldOut ? '판매 개시' : '품절 처리'}
-              </button>
+              <span>
+                <button 
+                  onClick={() => handleToggleSoldOut(menu.id, menu.isSoldOut)}
+                  className={menu.isSoldOut ? 'status-available' : 'status-sold-out'}
+                >
+                  {menu.isSoldOut ? '판매 개시' : '품절 처리'}
+                </button>
+                <button className="delete-button" onClick={() => handleDeleteMenu(menu.id)}>삭제</button>
+              </span>
             </li>
           ))}
         </ul>

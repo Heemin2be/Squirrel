@@ -139,8 +139,8 @@ const PosPage = ({ onRequirePin }) => {
     setSelectedTable(null);
   };
 
-  const handleOpenPaymentModal = (orderId, amount) => {
-    setOrderToPay(orderId);
+  const handleOpenPaymentModal = (orderId, amount, tableId = null) => {
+    setOrderToPay({ orderId, tableId });
     setPaymentAmount(amount);
     setIsPaymentModalOpen(true);
     setIsOrderModalOpen(false);
@@ -169,6 +169,7 @@ const PosPage = ({ onRequirePin }) => {
           <button onClick={() => onRequirePin('/pos/sales')}>매출 통계</button>
           <button onClick={() => onRequirePin('/pos/menu')}>메뉴 관리</button>
           <button onClick={() => onRequirePin('/pos/employees')}>직원 관리</button>
+          <button onClick={() => onRequirePin('/pos/categories')}>카테고리 관리</button>
           <button onClick={handleLogout} className="logout-button">로그아웃</button>
         </nav>
       </header>
@@ -215,7 +216,8 @@ const PosPage = ({ onRequirePin }) => {
       )}
       {isPaymentModalOpen && (
         <PaymentModal
-          orderId={orderToPay}
+          orderId={orderToPay?.orderId}
+          tableId={orderToPay?.tableId}
           totalAmount={paymentAmount}
           onPaymentSuccess={handlePaymentSuccess}
           onClose={() => setIsPaymentModalOpen(false)}

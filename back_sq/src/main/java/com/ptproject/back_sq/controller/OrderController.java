@@ -56,7 +56,7 @@ public class OrderController {
 
     // 👉 결제 처리 (POS에서 사용)
     @PostMapping("/{orderId}/payment")
-    public CreatePaymentResponse createPayment(
+    public ReceiptResponse createPayment(
             @PathVariable Long orderId,
             @RequestBody CreatePaymentRequest request
     ) {
@@ -69,5 +69,10 @@ public class OrderController {
         return paymentService.cancelPayment(orderId);
     }
 
-
+    // 👉 주문 취소 (POS에서 사용)
+    @DeleteMapping("/{orderId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancelOrder(@PathVariable Long orderId) {
+        orderService.cancelOrder(orderId);
+    }
 }

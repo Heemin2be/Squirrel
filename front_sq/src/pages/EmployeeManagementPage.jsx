@@ -77,6 +77,23 @@ function EmployeeManagementPage() {
       alert(`직원 추가에 실패했습니다: ${error.response?.data?.message || '오류가 발생했습니다.'}`);
     }
   };
+
+  const handleDeleteEmployee = async (employeeId) => {
+    if (!window.confirm('정말로 이 직원을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/employees/${employeeId}`);
+      alert('직원이 성공적으로 삭제되었습니다.');
+      // Re-fetch employees to update the list
+      const response = await apiClient.get('/employees');
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      alert(`직원 삭제에 실패했습니다: ${error.response?.data?.message || '오류가 발생했습니다.'}`);
+    }
+  };
   
   if (loading) {
     return <div className="management-container"><h1>로딩 중...</h1></div>;
@@ -150,16 +167,18 @@ function EmployeeManagementPage() {
         <ul className="data-list">
           <li className="data-list-header">
             <span>이름</span>
-            <span>PIN</span>
             <span>역할</span>
             <span>시급</span>
+            <span>관리</span>
           </li>
           {employees.map(emp => (
             <li key={emp.id} className="data-list-item">
               <span>{emp.name}</span>
-              <span>{emp.pin}</span>
               <span>{emp.role.replace('ROLE_', '')}</span>
               <span>{emp.hourlyWage.toLocaleString()}원</span>
+              <span>
+                <button className="delete-button" onClick={() => handleDeleteEmployee(emp.id)}>삭제</button>
+              </span>
             </li>
           ))}
         </ul>

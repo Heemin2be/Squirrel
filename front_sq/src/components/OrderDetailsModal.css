@@ -93,26 +93,12 @@
 }
 
 .modal-footer {
-  border-top: 1px solid #eee;
-  padding-top: 20px;
-}
-
-.total-amount {
-  display: flex;
-  justify-content: space-between;
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 20px;
-}
-
-.total-amount span {
-    color: #e74c3c;
-}
-
-.modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 15px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+  margin-top: 15px;
 }
 
 .action-button {
@@ -140,4 +126,36 @@
 .action-button.primary:hover {
   background-color: #2980b9;
   border-color: #2980b9;
+}
+
+.order-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+  margin-top: 15px;
+}
+
+.cancel-order-button {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancel-order-button:hover {
+  background-color: #d32f2f;
+}
+
+.modal-actions-bottom {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  margin-top: 15px;
 }

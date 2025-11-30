@@ -6,6 +6,7 @@ import PosPage from './pages/PosPage';
 import SalesStatisticsPage from './pages/SalesStatisticsPage';
 import MenuManagementPage from './pages/MenuManagementPage';
 import EmployeeManagementPage from './pages/EmployeeManagementPage';
+import CategoryManagementPage from './pages/CategoryManagementPage';
 import KioskStartPage from './pages/KioskStartPage';
 import Root from './pages/Root';
 import PinModal from './components/PinModal';
@@ -51,6 +52,7 @@ function App() {
           <Route path="/pos/sales" element={<SalesStatisticsPage />} />
           <Route path="/pos/menu" element={<MenuManagementPage />} />
           <Route path="/pos/employees" element={<EmployeeManagementPage />} />
+          <Route path="/pos/categories" element={<CategoryManagementPage />} />
         </Routes>
       </main>
 
