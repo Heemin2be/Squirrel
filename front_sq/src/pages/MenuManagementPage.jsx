@@ -1,59 +1,144 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import apiClient from '../api/axios';
 import './ManagementPages.css';
 
-// Import images to be used in initial data, similar to KioskPage
-import TosokjeonImg from '../assets/tosokjeon.png';
-import SaladImg from '../assets/salad.png';
-import MukbabImg from '../assets/mukbap.png';
-import MukbossamImg from '../assets/mukbossam.png';
-import BibimbapImg from '../assets/bibimbap.jpeg';
-import ImjatangImg from '../assets/imjatang.jpeg';
-import PajeonImg from '../assets/pajeon.jpeg';
-
-// Dummy Data
-const initialMenus = [
-  { id: 101, name: "토속전", price: 5000, category: "메인 요리", cost: 2000, isSoldOut: false, image: TosokjeonImg },
-  { id: 102, name: "임자탕", price: 9000, category: "메인 요리", cost: 3500, isSoldOut: false, image: ImjatangImg },
-  { id: 105, name: "도토리파전", price: 12000, category: "메인 요리", cost: 4000, isSoldOut: false, image: PajeonImg },
-  { id: 201, name: "계란찜", price: 3000, category: "사이드", cost: 1000, isSoldOut: true, image: `https://via.placeholder.com/150?text=계란찜` },
-  { id: 301, name: "콜라", price: 2000, category: "음료", cost: 500, isSoldOut: false, image: `https://via.placeholder.com/150?text=콜라` },
-];
-
-const categories = ["메인 요리", "사이드", "음료"];
-
 function MenuManagementPage() {
-  const [menus, setMenus] = useState(initialMenus);
+  const navigate = useNavigate();
+  const [menus, setMenus] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [isAdding, setIsAdding] = useState(false);
-  const [newMenu, setNewMenu] = useState({ name: '', price: '', category: categories[0], cost: '', image: null });
+  const [newMenu, setNewMenu] = useState({ name: '', price: '', categoryId: '', cost: '', imageUrl: null });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      alert('접근 권한이 없습니다. 로그인해주세요.');
+      navigate('/pos');
+      return;
+    }
+
+    const userRole = localStorage.getItem('role');
+    if (userRole !== 'ROLE_ADMIN') {
+      setError('관리자 전용 페이지입니다.');
+      setLoading(false);
+      return;
+    }
+    
+    const fetchInitialData = async () => {
+      setLoading(true);
+      try {
+        const [menusResponse, categoriesResponse] = await Promise.all([
+          apiClient.get('/menus'),
+          apiClient.get('/categories')
+        ]);
+        setMenus(menusResponse.data);
+        setCategories(categoriesResponse.data);
+        if (categoriesResponse.data.length > 0) {
+          setNewMenu(prev => ({ ...prev, categoryId: categoriesResponse.data[0].id }));
+        }
+      } catch (err) {
+        console.error("Error fetching initial data:", err);
+        setError('데이터를 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('employeeName');
+    localStorage.removeItem('role');
+    alert('로그아웃 되었습니다.');
+    navigate('/');
+  };
 
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setNewMenu({ ...newMenu, image: URL.createObjectURL(file) });
+      setNewMenu({ ...newMenu, imageUrl: URL.createObjectURL(file) });
     }
   };
 
-  const handleAddMenu = () => {
-    // Dummy implementation
-    const menuToAdd = {
-        ...newMenu,
-        id: Date.now(),
-        price: parseInt(newMenu.price, 10),
-        cost: parseInt(newMenu.cost, 10),
-        isSoldOut: false
+  const handleAddMenu = async () => {
+    if (!newMenu.name || !newMenu.price || !newMenu.cost || !newMenu.categoryId) {
+      alert('모든 필드를 채워주세요.');
+      return;
+    }
+
+    const menuData = {
+      name: newMenu.name,
+      price: parseInt(newMenu.price, 10),
+      cost: parseInt(newMenu.cost, 10),
+      categoryId: newMenu.categoryId,
+      imageUrl: null, // Image upload is not implemented in this version
     };
-    setMenus([...menus, menuToAdd]);
-    setIsAdding(false);
-    setNewMenu({ name: '', price: '', category: categories[0], cost: '', image: null });
+
+    try {
+      await apiClient.post('/menus', menuData);
+      alert('메뉴가 성공적으로 추가되었습니다.');
+      setIsAdding(false);
+      setNewMenu({ name: '', price: '', categoryId: categories.length > 0 ? categories[0].id : '', cost: '', imageUrl: null });
+      const response = await apiClient.get('/menus'); // Re-fetch
+      setMenus(response.data);
+    } catch (error) {
+      console.error('Error adding menu:', error);
+      alert(`메뉴 추가에 실패했습니다: ${error.response?.data?.message || '관리자 권한이 필요합니다'}`);
+    }
   };
 
-  const handleToggleSoldOut = (id) => {
-    setMenus(menus.map(m => m.id === id ? { ...m, isSoldOut: !m.isSoldOut } : m));
+  const handleToggleSoldOut = async (id, currentStatus) => {
+    const newStatus = !currentStatus;
+    try {
+      await apiClient.patch(`/menus/${id}`, { isSoldOut: newStatus });
+      
+      setMenus(prevMenus => 
+        prevMenus.map(menu => 
+          menu.id === id ? { ...menu, isSoldOut: newStatus } : menu
+        )
+      );
+      
+      alert(`상태가 '${newStatus ? '품절' : '판매중'}'으로 변경되었습니다.`);
+    } catch (error) {
+      console.error('Error updating sold out status:', error);
+      alert(`상태 변경에 실패했습니다: ${error.response?.data?.message || '관리자 권한이 필요합니다'}`);
+    }
   };
+
+  if (loading) {
+    return <div className="management-container"><h1>로딩 중...</h1></div>;
+  }
+
+  if (error) {
+    return (
+      <div className="management-container">
+        <header className="management-header">
+          <h1>메뉴 관리</h1>
+          <div>
+            <button onClick={() => navigate('/pos')}>POS 돌아가기</button>
+            <button onClick={handleLogout} className="logout-button">로그아웃</button>
+          </div>
+        </header>
+        <div className="error-message">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="management-container">
-      <h1>메뉴 관리</h1>
+      <header className="management-header">
+        <h1>메뉴 관리</h1>
+        <div>
+          <button onClick={() => navigate('/pos')}>POS 돌아가기</button>
+          <button onClick={handleLogout} className="logout-button">로그아웃</button>
+        </div>
+      </header>
+
       <div className="actions">
         <button onClick={() => setIsAdding(!isAdding)}>
           {isAdding ? '취소' : '새 메뉴 추가'}
@@ -82,10 +167,10 @@ function MenuManagementPage() {
             onChange={(e) => setNewMenu({ ...newMenu, cost: e.target.value })}
           />
           <select
-            value={newMenu.category}
-            onChange={(e) => setNewMenu({ ...newMenu, category: e.target.value })}
+            value={newMenu.categoryId}
+            onChange={(e) => setNewMenu({ ...newMenu, categoryId: e.target.value })}
           >
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <div className="file-input-wrapper">
             <label htmlFor="image-upload" className="file-upload-label">이미지 선택</label>
@@ -95,7 +180,7 @@ function MenuManagementPage() {
                 accept="image/*"
                 onChange={handleImageChange}
             />
-            {newMenu.image && <img src={newMenu.image} alt="Preview" className="image-preview" />}
+            {newMenu.imageUrl && <img src={newMenu.imageUrl} alt="Preview" className="image-preview" />}
           </div>
           <button onClick={handleAddMenu}>추가하기</button>
         </div>
@@ -115,9 +200,12 @@ function MenuManagementPage() {
             <li key={menu.id} className="data-list-item">
               <span>{menu.name}</span>
               <span>{menu.price.toLocaleString()}원</span>
-              <span>{menu.category}</span>
-              <span>{menu.isSoldOut ? '품절' : '판매중'}</span>
-              <button onClick={() => handleToggleSoldOut(menu.id)}>
+              <span>{menu.categoryName}</span>
+              <span className={menu.isSoldOut ? 'status-text-sold-out' : 'status-text-available'}>{menu.isSoldOut ? '품절' : '판매중'}</span>
+              <button 
+                onClick={() => handleToggleSoldOut(menu.id, menu.isSoldOut)}
+                className={menu.isSoldOut ? 'status-available' : 'status-sold-out'}
+              >
                 {menu.isSoldOut ? '판매 개시' : '품절 처리'}
               </button>
             </li>

@@ -14,12 +14,12 @@ function TableSelectionModal({ tables, onSelect, onClose }) {
             {tables.map(table => (
               <div
                 key={table.id}
-                className={`table-card-modal ${table.status}`}
+                className={`table-card-modal ${table.status.toLowerCase()}`}
                 onClick={() => onSelect(table)}
               >
-                <div className="table-number-modal">{table.number}</div>
+                <div className="table-number-modal">{table.tableNumber}</div>
                 <div className="table-status-modal">
-                  {table.status === 'empty' ? '이용 가능' : '식사중'}
+                  {table.status === 'EMPTY' ? '이용 가능' : '식사중'}
                 </div>
               </div>
             ))}

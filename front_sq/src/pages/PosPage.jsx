@@ -1,70 +1,132 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import apiClient from "../api/axios";
+import { Client } from "@stomp/stompjs";
 import OrderDetailsModal from "../components/OrderDetailsModal";
-import PaymentModal from "../components/PaymentModal"; // Import PaymentModal
+import PaymentModal from "../components/PaymentModal";
 import "./PosPage.css";
 
-// Placeholder data
-const initialTables = [
-  { id: 1, number: "1", status: "empty" },
-  { id: 2, number: "2", status: "occupied" },
-  { id: 3, number: "3", status: "occupied" },
-  { id: 4, number: "4", status: "empty" },
-  { id: 5, number: "5", status: "empty" },
-  { id: 6, number: "6", status: "occupied" },
-  { id: 7, number: "7", status: "empty" },
-  { id: 8, number: "8", status: "empty" },
-];
-
-// More detailed dummy data for orders by table
-const initialOrdersByTable = {
-  2: [
-    {
-      orderId: 101,
-      time: "10분 전",
-      items: [
-        { id: 102, name: "임자탕", price: 9000, quantity: 2 },
-        { id: 301, name: "콜라", price: 2000, quantity: 1 },
-      ],
-    },
-  ],
-  3: [
-    {
-      orderId: 103,
-      time: "2분 전",
-      items: [{ id: 105, name: "도토리파전", price: 12000, quantity: 1 }],
-    },
-  ],
-  6: [
-    {
-      orderId: 102,
-      time: "5분 전",
-      items: [
-        { id: 107, name: "묵보쌈", price: 30000, quantity: 1 },
-        { id: 106, name: "묵밥", price: 8000, quantity: 2 },
-        { id: 302, name: "사이다", price: 2000, quantity: 2 },
-      ],
-    },
-  ],
-};
-
-// Simplified recent orders for the sidebar (will need to be updated based on ordersByTable state)
-const initialRecentOrders = [
-  { id: 101, table: "2", items: "임자탕 x 2, 콜라 x 1", time: "10분 전" },
-  { id: 102, table: "6", items: "묵보쌈 x 1, 묵밥 x 2, ...", time: "5분 전" },
-  { id: 103, table: "3", items: "도토리파전 x 1", time: "2분 전" },
-];
-
-function PosPage({ onRequirePin }) {
-  const [tables, setTables] = useState(initialTables);
-  const [ordersByTable, setOrdersByTable] = useState(initialOrdersByTable);
-  const [recentOrders, setRecentOrders] = useState(initialRecentOrders);
+const PosPage = ({ onRequirePin }) => {
+  const navigate = useNavigate();
+  const [tables, setTables] = useState([]);
+  const [ordersByTable, setOrdersByTable] = useState({});
+  const [recentOrders, setRecentOrders] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
+  const [orderToPay, setOrderToPay] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const stompClientRef = useRef(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [tablesResponse, pendingOrdersResponse] = await Promise.all([
+        apiClient.get('/tables'),
+        apiClient.get('/orders?status=PENDING')
+      ]);
+
+      const tablesData = tablesResponse.data;
+      const pendingOrders = pendingOrdersResponse.data;
+
+      const activeTables = new Set(pendingOrders.map(o => o.tableNumber));
+      const updatedTables = tablesData.map(t => ({
+        ...t,
+        status: activeTables.has(String(t.tableNumber)) ? 'OCCUPIED' : 'EMPTY'
+      }));
+
+      setTables(updatedTables);
+      setRecentOrders(pendingOrders);
+
+      const ordersGroupedByTable = pendingOrders.reduce((acc, order) => {
+        const tableNum = order.tableNumber;
+        if (!acc[tableNum]) acc[tableNum] = [];
+        acc[tableNum].push(order);
+        return acc;
+      }, {});
+      setOrdersByTable(ordersGroupedByTable);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching POS data:", err);
+      if (err.response && err.response.status === 403) {
+        setError("접근 권한이 없습니다. 다시 로그인해주세요.");
+        localStorage.removeItem('accessToken');
+        onRequirePin('/pos');
+      } else {
+        setError("데이터를 불러오는데 실패했습니다.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      onRequirePin('/pos');
+      return;
+    }
+
+    fetchData();
+
+    // WebSocket Connection
+    const client = new Client({
+        brokerURL: 'ws://localhost:8080/ws', // Assumes backend is on localhost:8080
+        reconnectDelay: 5000,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+    });
+
+    client.onConnect = () => {
+        client.subscribe('/topic/new-order', message => {
+            const newOrderMessage = JSON.parse(message.body);
+            if (newOrderMessage.type === 'new-order') {
+                const newOrder = newOrderMessage.payload;
+                
+                // Update state with the new order
+                setRecentOrders(prevOrders => [newOrder, ...prevOrders]);
+                setOrdersByTable(prev => {
+                    const tableNum = newOrder.tableNumber;
+                    const updatedOrders = [...(prev[tableNum] || []), newOrder];
+                    return { ...prev, [tableNum]: updatedOrders };
+                });
+                setTables(prevTables => prevTables.map(t => 
+                    String(t.tableNumber) === newOrder.tableNumber 
+                        ? { ...t, status: 'OCCUPIED' } 
+                        : t
+                ));
+            }
+        });
+    };
+
+    client.onStompError = (frame) => {
+        console.error('Broker reported error: ' + frame.headers['message']);
+        console.error('Additional details: ' + frame.body);
+    };
+
+    client.activate();
+    stompClientRef.current = client;
+
+    return () => {
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+      }
+    };
+  }, [onRequirePin]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('employeeName');
+    localStorage.removeItem('role');
+    alert('로그아웃 되었습니다.');
+    navigate('/');
+  };
 
   const handleTableClick = (table) => {
-    if (table.status === "occupied") {
+    if (table.status === "OCCUPIED") {
       setSelectedTable(table);
       setIsOrderModalOpen(true);
     } else {
@@ -77,32 +139,27 @@ function PosPage({ onRequirePin }) {
     setSelectedTable(null);
   };
 
-  const handleOpenPaymentModal = (amount) => {
+  const handleOpenPaymentModal = (orderId, amount) => {
+    setOrderToPay(orderId);
     setPaymentAmount(amount);
     setIsPaymentModalOpen(true);
-    setIsOrderModalOpen(false); // Close order modal when opening payment modal
+    setIsOrderModalOpen(false);
   };
 
   const handlePaymentSuccess = () => {
-    // Update table status to empty
-    setTables(prevTables =>
-      prevTables.map(table =>
-        table.id === selectedTable.id ? { ...table, status: "empty" } : table
-      )
-    );
-    // Clear orders for this table
-    setOrdersByTable(prevOrders => {
-      const newOrders = { ...prevOrders };
-      delete newOrders[selectedTable.id];
-      return newOrders;
-    });
-    // Optionally update recent orders display
-    setRecentOrders(prevRecentOrders =>
-        prevRecentOrders.filter(order => order.table !== String(selectedTable.id))
-    );
+    fetchData(); // Refresh data after payment
     setIsPaymentModalOpen(false);
     setSelectedTable(null);
+    setOrderToPay(null);
   };
+  
+  if (loading && !error) {
+    return <div className="pos-container"><h1>데이터를 불러오는 중...</h1></div>;
+  }
+
+  if (error) {
+    return <div className="pos-container error"><h1>{error}</h1></div>;
+  }
 
   return (
     <div className="pos-container">
@@ -112,6 +169,7 @@ function PosPage({ onRequirePin }) {
           <button onClick={() => onRequirePin('/pos/sales')}>매출 통계</button>
           <button onClick={() => onRequirePin('/pos/menu')}>메뉴 관리</button>
           <button onClick={() => onRequirePin('/pos/employees')}>직원 관리</button>
+          <button onClick={handleLogout} className="logout-button">로그아웃</button>
         </nav>
       </header>
       <div className="pos-body">
@@ -120,26 +178,28 @@ function PosPage({ onRequirePin }) {
             {tables.map((table) => (
               <div
                 key={table.id}
-                className={`table-card ${table.status}`}
+                className={`table-card ${table.status.toLowerCase()}`}
                 onClick={() => handleTableClick(table)}
               >
-                <div className="table-number">{table.number}</div>
+                <div className="table-number">{table.tableNumber}</div>
                 <div className="table-status">
-                  {table.status === "empty" ? "비어있음" : "식사중"}
+                  {table.status === "EMPTY" ? "비어있음" : "식사중"}
                 </div>
               </div>
             ))}
           </div>
         </main>
         <aside className="order-sidebar">
-          <h2>최근 주문</h2>
+          <h2>최근 주문 (미결제)</h2>
           <ul className="order-list">
             {recentOrders.map((order) => (
-              <li key={order.id} className="order-item">
+              <li key={order.orderId} className="order-item">
                 <div className="order-item-header">
-                  테이블 {order.table} ({order.time})
+                  테이블 {order.tableNumber} ({new Date(order.orderTime).toLocaleTimeString()})
                 </div>
-                <div className="order-item-body">{order.items}</div>
+                <div className="order-item-body">
+                  총 {order.totalPrice.toLocaleString()}원
+                </div>
               </li>
             ))}
           </ul>
@@ -148,13 +208,14 @@ function PosPage({ onRequirePin }) {
       {isOrderModalOpen && selectedTable && (
         <OrderDetailsModal
           table={selectedTable}
-          orders={ordersByTable[selectedTable.id] || []}
+          orders={ordersByTable[selectedTable.tableNumber] || []}
           onClose={handleCloseOrderModal}
           onOpenPaymentModal={handleOpenPaymentModal}
         />
       )}
       {isPaymentModalOpen && (
         <PaymentModal
+          orderId={orderToPay}
           totalAmount={paymentAmount}
           onPaymentSuccess={handlePaymentSuccess}
           onClose={() => setIsPaymentModalOpen(false)}

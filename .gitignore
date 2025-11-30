@@ -3,3 +3,10 @@ documents/
 
 # macOS
 .DS_Store
+bootrun.log
+ANALYSIS.md
+PROMPTS.md
+WEBSOCKET_EXPLANATION.txt
+back_sq/docs/api.md
+changes.md
+

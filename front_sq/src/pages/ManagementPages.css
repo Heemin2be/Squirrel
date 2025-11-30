@@ -147,17 +147,43 @@
   background-color: #fdfdfd;
 }
 
-.data-list-item button {
+/* Status Toggle Buttons in Data List */
+.data-list-item .status-available,
+.data-list-item .status-sold-out {
+    border: none;
     padding: 5px 10px;
-    font-size: 14px;
-    cursor: pointer;
-    border: 1px solid #ccc;
     border-radius: 4px;
-    background-color: #e74c3c;
+    cursor: pointer;
+    font-size: 14px;
     color: white;
+    transition: background-color 0.3s;
 }
-.data-list-item button:hover{
+
+.data-list-item .status-available {
+    background-color: #2ecc71; /* Green */
+}
+
+.data-list-item .status-available:hover {
+    background-color: #27ae60;
+}
+
+.data-list-item .status-sold-out {
+    background-color: #e74c3c; /* Red */
+}
+
+.data-list-item .status-sold-out:hover {
     background-color: #c0392b;
+}
+
+/* Status Text in Data List */
+.data-list-item .status-text-available {
+    color: #2ecc71; /* Green */
+    font-weight: bold;
+}
+
+.data-list-item .status-text-sold-out {
+    color: #e74c3c; /* Red */
+    font-weight: bold;
 }
 
 
@@ -189,4 +215,35 @@
 
 .stats-card span {
     color: #7f8c8d;
+}
+
+/* Status Toggle Buttons */
+.status-available {
+    background-color: #2ecc71; /* Green */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.status-available:hover {
+    background-color: #27ae60;
+}
+
+.status-sold-out {
+    background-color: #e74c3c; /* Red */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.status-sold-out:hover {
+    background-color: #c0392b;
 }

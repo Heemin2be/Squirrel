@@ -1,5 +1,6 @@
 package com.ptproject.back_sq.dto.order;
 
+import com.ptproject.back_sq.dto.order.OrderItemResponse;
 import com.ptproject.back_sq.entity.order.Order;
 import com.ptproject.back_sq.entity.order.OrderStatus;
 import lombok.AllArgsConstructor;

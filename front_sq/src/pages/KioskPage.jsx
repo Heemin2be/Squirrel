@@ -1,66 +1,157 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Client } from "@stomp/stompjs";
 import Cart from "../components/Cart";
-import TableSelectionModal from "../components/TableSelectionModal";
+import apiClient from "../api/axios";
 import "./KioskPage.css";
 
-// Image Imports
-import TosokjeonImg from '../assets/tosokjeon.png';
-import SaladImg from '../assets/salad.png';
-import MukbabImg from '../assets/mukbap.png';
-import MukbossamImg from '../assets/mukbossam.png';
-import BibimbapImg from '../assets/bibimbap.jpeg';
-import ImjatangImg from '../assets/imjatang.jpeg';
-import PajeonImg from '../assets/pajeon.jpeg';
-
-
-// Placeholder data
-const categories = [
-  { id: 1, name: "메인 요리" },
-  { id: 2, name: "사이드" },
-  { id: 3, name: "음료" },
-];
-
-const menus = {
-  1: [
-    { id: 101, name: "토속전", price: 5000, image: TosokjeonImg },
-    { id: 102, name: "임자탕", price: 9000, image: ImjatangImg },
-    { id: 103, name: "비빔밥", price: 8000, image: BibimbapImg },
-    { id: 104, name: "샐러드", price: 6000, image: SaladImg },
-    { id: 105, name: "도토리파전", price: 12000, image: PajeonImg },
-    { id: 106, name: "묵밥", price: 8000, image: MukbabImg },
-    { id: 107, name: "묵보쌈", price: 30000, image: MukbossamImg },
-  ],
-  2: [
-    { id: 201, name: "계란찜", price: 3000, image: `https://via.placeholder.com/150?text=계란찜` },
-    { id: 202, name: "공기밥", price: 1000, image: `https://via.placeholder.com/150?text=공기밥` },
-  ],
-  3: [
-    { id: 301, name: "콜라", price: 2000, image: `https://via.placeholder.com/150?text=콜라` },
-    { id: 302, name: "사이다", price: 2000, image: `https://via.placeholder.com/150?text=사이다` },
-  ],
-};
-
-const tables = [
-    { id: 1, number: "1", status: "empty" },
-    { id: 2, number: "2", status: "occupied" },
-    { id: 3, number: "3", status: "occupied" },
-    { id: 4, number: "4", status: "empty" },
-    { id: 5, number: "5", status: "empty" },
-    { id: 6, number: "6", status: "occupied" },
-    { id: 7, number: "7", status: "empty" },
-    { id: 8, number: "8", status: "empty" },
-];
-
 function KioskPage() {
-  const [activeCategory, setActiveCategory] = useState(categories[0].id);
-  const [cart, setCart] = useState([]);
-  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const { tableId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { orderType } = location.state || { orderType: 'dinein' }; // Default to dinein if not specified
 
+  const [currentTable, setCurrentTable] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [menus, setMenus] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [loadingTable, setLoadingTable] = useState(true);
+  const [errorTable, setErrorTable] = useState(null);
+
+  const stompClientRef = useRef(null);
+  const activeCategoryRef = useRef(activeCategory);
+
+  useEffect(() => {
+    activeCategoryRef.current = activeCategory;
+  }, [activeCategory]);
+
+  // Helper function to sort menus (available first, then sold-out)
+  const sortMenus = (menuArray) => {
+    return [...menuArray].sort((a, b) => {
+      // Available (false) comes before SoldOut (true)
+      if (a.isSoldOut && !b.isSoldOut) return 1; // a is sold out, b is not -> a comes after b
+      if (!a.isSoldOut && b.isSoldOut) return -1; // a is not sold out, b is -> a comes before b
+      // If same sold-out status, maintain original order or sort by name/id if preferred
+      return 0; 
+    });
+  };
+
+  // Initial data fetching and WebSocket connection
+  useEffect(() => {
+    const fetchTable = async () => {
+      try {
+        setLoadingTable(true);
+        const response = await apiClient.get(`/tables/${tableId}`);
+        setCurrentTable(response.data);
+        setErrorTable(null);
+      } catch (error) {
+        console.error("Error fetching table:", error);
+        setErrorTable("테이블 정보를 불러오지 못했습니다.");
+      } finally {
+        setLoadingTable(false);
+      }
+    };
+
+    const fetchCategories = async () => {
+      try {
+        const catResponse = await apiClient.get('/categories');
+        setCategories(catResponse.data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+    
+    fetchTable();
+    fetchCategories();
+
+    const client = new Client({
+      brokerURL: 'ws://localhost:8080/ws',
+      reconnectDelay: 5000,
+    });
+
+    client.onConnect = () => {
+      client.subscribe('/topic/menu-update', message => {
+        const updateMsg = JSON.parse(message.body);
+        if (updateMsg.type === 'menu-update') {
+          const payload = updateMsg.payload;
+          
+          setMenus(prevMenus => {
+            let newMenusState;
+            const menuExists = prevMenus.some(m => m.id === payload.menuId);
+
+            if (payload.deleted) {
+              newMenusState = prevMenus.filter(m => m.id !== payload.menuId);
+            } else if (menuExists) {
+              newMenusState = prevMenus.map(m => 
+                m.id === payload.menuId 
+                  ? { ...m, 
+                      name: payload.name, 
+                      price: payload.price, 
+                      imageUrl: payload.imageUrl, 
+                      isSoldOut: payload.isSoldOut
+                    } 
+                  : m
+              );
+            } else if (!menuExists && payload.categoryId === activeCategoryRef.current) {
+               const newMenu = {
+                 id: payload.menuId,
+                 name: payload.name,
+                 price: payload.price,
+                 cost: payload.cost,
+                 imageUrl: payload.imageUrl,
+                 isSoldOut: payload.isSoldOut,
+                 categoryId: payload.categoryId
+               };
+               newMenusState = [...prevMenus, newMenu];
+            } else {
+              newMenusState = prevMenus;
+            }
+            
+            return sortMenus(newMenusState);
+          });
+        }
+      });
+    };
+
+    client.onStompError = (frame) => {
+      console.error('Broker reported error: ' + frame.headers['message']);
+      console.error('Additional details: ' + frame.body);
+    };
+
+    client.activate();
+    stompClientRef.current = client;
+
+    return () => {
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+      }
+    };
+  }, [tableId]);
+
+  useEffect(() => {
+    if (categories.length > 0 && !activeCategory) {
+      setActiveCategory(categories[0].id);
+    }
+  }, [categories, activeCategory]);
+
+  useEffect(() => {
+    if (activeCategory) {
+      const fetchMenus = async () => {
+        try {
+          const response = await apiClient.get(`/menus?categoryId=${activeCategory}`);
+          setMenus(sortMenus(response.data));
+        } catch (error) {
+          console.error(`Error fetching menus for category ${activeCategory}:`, error);
+        }
+      };
+      fetchMenus();
+    }
+  }, [activeCategory]);
+  
   const handleAddToCart = (menu) => {
+    if (menu.isSoldOut) {
+      alert("이 메뉴는 현재 품절입니다.");
+      return;
+    }
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === menu.id);
       if (existingItem) {
@@ -92,34 +183,47 @@ function KioskPage() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       alert('장바구니에 상품을 담아주세요.');
       return;
     }
 
-    if (orderType === 'takeout') {
-      const orderNumber = Math.floor(Math.random() * 900) + 100;
-      console.log("포장 주문 완료:", { orderNumber, items: cart, total });
-      alert(`주문이 성공적으로 완료되었습니다.\n주문번호: ${orderNumber}`);
-      navigate('/kiosk', { replace: true }); // Go back to KioskStartPage
-    } else { // Dine-in
-      setIsTableModalOpen(true);
+    if (!currentTable) {
+        alert('테이블 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+    }
+
+    const orderData = {
+      tableId: currentTable.id,
+      items: cart.map(item => ({
+        menuId: item.id,
+        quantity: item.quantity,
+      })),
+    };
+
+    try {
+      await apiClient.post('/orders', orderData);
+      alert(`주문이 성공적으로 완료되었습니다.\n테이블 ${currentTable.tableNumber}로 가져다 드리겠습니다.`);
+      navigate('/kiosk', { replace: true });
+      setCart([]);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
-  const handleTableSelect = (table) => {
-    if (table.status === 'occupied') {
-        alert('이미 사용중인 테이블입니다. 다른 테이블을 선택해주세요.');
-        return;
-    }
-    setIsTableModalOpen(false);
-    
-    const orderNumber = Math.floor(Math.random() * 900) + 100;
-    console.log(`테이블 ${table.number} 매장 주문 완료:`, { orderNumber, table: table.number, items: cart, total });
-    alert(`주문이 성공적으로 완료되었습니다.\n주문하신 메뉴는 테이블 ${table.number}로 가져다 드리겠습니다.`);
-    navigate('/kiosk', { replace: true }); // Go back to KioskStartPage
-  };
+  if (loadingTable) {
+    return <div className="kiosk-container">테이블 정보를 불러오는 중...</div>;
+  }
+
+  if (errorTable) {
+    return <div className="kiosk-container error">{errorTable}</div>;
+  }
+
+  if (!currentTable) {
+    return <div className="kiosk-container error">테이블 정보를 찾을 수 없습니다.</div>;
+  }
 
   return (
     <div className="kiosk-container">
@@ -143,17 +247,24 @@ function KioskPage() {
         </aside>
         <main className="main-content">
           <h2 className="order-type-display">
-            {orderType === 'dinein' ? '매장 식사' : '포장'}
+            테이블 {currentTable.tableNumber}
           </h2>
           <div className="menu-grid">
-            {menus[activeCategory].map((menu) => (
-              <div key={menu.id} className="menu-card" onClick={() => handleAddToCart(menu)}>
-                <img
-                  src={menu.image}
-                  alt={menu.name}
-                />
-                <h3>{menu.name}</h3>
-                <p>{menu.price.toLocaleString()}원</p>
+            {menus.map((menu) => (
+              <div 
+                key={menu.id} 
+                className={`menu-card ${menu.isSoldOut ? 'sold-out' : ''}`}
+                onClick={() => handleAddToCart(menu)}
+              >
+                {menu.isSoldOut && <div className="sold-out-overlay">품절</div>}
+                <div className="menu-card-content">
+                  <img
+                    src={menu.imageUrl || '/assets/placeholder.png'}
+                    alt={menu.name}
+                  />
+                  <h3>{menu.name}</h3>
+                  <p>{menu.price.toLocaleString()}원</p>
+                </div>
               </div>
             ))}
           </div>
@@ -170,13 +281,6 @@ function KioskPage() {
         </div>
         <button className="checkout-button" onClick={handleCheckout}>주문하기</button>
       </footer>
-      {isTableModalOpen && (
-        <TableSelectionModal
-          tables={tables}
-          onSelect={handleTableSelect}
-          onClose={() => setIsTableModalOpen(false)}
-        />
-      )}
     </div>
   );
 }

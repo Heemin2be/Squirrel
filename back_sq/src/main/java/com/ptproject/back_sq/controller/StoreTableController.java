@@ -19,4 +19,9 @@ public class StoreTableController {
     public List<StoreTable> getAllTables() {
         return storeTableService.getAllTables();
     }
+
+    @GetMapping("/{id}")
+    public StoreTable getTableById(@PathVariable Long id) {
+        return storeTableService.getTableById(id);
+    }
 }

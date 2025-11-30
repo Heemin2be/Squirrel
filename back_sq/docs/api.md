@@ -8,7 +8,7 @@
   | `/api/auth/login`, `/ws/**`, `/topic/**`, `/app/**` | 전체 허용 |
   | `/api/menus` `GET`, `/api/categories` `GET`, `/api/tables` `GET`, `/api/orders (POST)` | 전체 허용 (키오스크 용) |
   | `/api/menus/**`, `/api/categories/**`, `/api/employees/**`, `/api/stats/**` | ROLE_ADMIN |
-  | `/api/orders/**`, `/api/payments/**`, `/api/attendance/**` | 로그인 필요 |
+  | `/api/orders/**`, `/api/payments/**` | 로그인 필요 |
 
 ---
 
@@ -120,11 +120,19 @@
 ## 4. 테이블 (Store Table)
 
 ### GET `/api/tables`
+- **설명**: 모든 테이블의 상태를 조회합니다.
 ```json
 [
   { "id": 1, "tableNumber": 1, "status": "EMPTY" },
   { "id": 2, "tableNumber": 2, "status": "OCCUPIED" }
 ]
+```
+
+### GET `/api/tables/{id}`
+- **설명**: 특정 테이블의 상태를 조회합니다.
+- **응답**:
+```json
+{ "id": 1, "tableNumber": 1, "status": "EMPTY" }
 ```
 
 ---
@@ -229,30 +237,7 @@ POST 예시:
 
 ---
 
-## 8. 근태 (Attendance)
-
-### POST `/api/attendance/clock-in`
-### POST `/api/attendance/clock-out`
-- 로그인한 직원의 출퇴근 기록
-
-### GET `/api/attendance?employeeId=1`
-- **기본**: 본인 기록 반환
-- **관리자**: `employeeId` 로 임의 직원 검색 가능
-```json
-[
-  {
-    "id": 10,
-    "employeeId": 1,
-    "employeeName": "홍길동",
-    "clockIn": "2025-11-20T09:00:00",
-    "clockOut": "2025-11-20T18:00:00"
-  }
-]
-```
-
----
-
-## 9. 통계 (Statistics) `[ROLE_ADMIN]`
+## 8. 통계 (Statistics) `[ROLE_ADMIN]`
 
 | 경로 | 설명 |
 | --- | --- |
@@ -264,7 +249,7 @@ POST 예시:
 
 ---
 
-## ✅ 에러 처리
+## 9. ✅ 에러 처리
 - 공통 예외 응답
 ```json
 {

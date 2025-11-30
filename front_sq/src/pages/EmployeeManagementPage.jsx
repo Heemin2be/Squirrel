@@ -1,35 +1,112 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import apiClient from '../api/axios';
 import './ManagementPages.css';
 
-// Dummy Data
-const initialEmployees = [
-  { id: 1, name: '김도훈', pin: '1234', role: '관리자', hourlyWage: 12000 },
-  { id: 2, name: '서창민', pin: '5678', role: '직원', hourlyWage: 10000 },
-  { id: 3, name: '홍길동', pin: '1111', role: '직원', hourlyWage: 10000 },
-];
-
-const roles = ['관리자', '직원'];
+const roles = ['ADMIN', 'STAFF'];
 
 function EmployeeManagementPage() {
-  const [employees, setEmployees] = useState(initialEmployees);
+  const navigate = useNavigate();
+  const [employees, setEmployees] = useState([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newEmployee, setNewEmployee] = useState({ name: '', pin: '', role: roles[1], hourlyWage: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const handleAddEmployee = () => {
-    // Dummy implementation
-    const employeeToAdd = {
-        ...newEmployee,
-        id: Date.now(),
-        hourlyWage: parseInt(newEmployee.hourlyWage, 10),
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      alert('접근 권한이 없습니다. 로그인해주세요.');
+      navigate('/pos');
+      return;
+    }
+
+    const userRole = localStorage.getItem('role');
+    if (userRole !== 'ROLE_ADMIN') {
+      setError('관리자 전용 페이지입니다.');
+      setLoading(false);
+      return;
+    }
+
+    const fetchEmployees = async () => {
+      setLoading(true);
+      try {
+        const response = await apiClient.get('/employees');
+        setEmployees(response.data);
+      } catch (err) {
+        console.error("Error fetching employees:", err);
+        setError('직원 목록을 불러오는 데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
     };
-    setEmployees([...employees, employeeToAdd]);
-    setIsAdding(false);
-    setNewEmployee({ name: '', pin: '', role: roles[1], hourlyWage: '' });
+
+    fetchEmployees();
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('employeeName');
+    localStorage.removeItem('role');
+    alert('로그아웃 되었습니다.');
+    navigate('/');
   };
+
+  const handleAddEmployee = async () => {
+    if (!newEmployee.name || !newEmployee.pin || !newEmployee.hourlyWage) {
+      alert('모든 필드를 채워주세요.');
+      return;
+    }
+
+    const employeeData = {
+      name: newEmployee.name,
+      pin: newEmployee.pin,
+      role: `ROLE_${newEmployee.role}`, // Ensure ROLE_ prefix
+      hourlyWage: parseInt(newEmployee.hourlyWage, 10),
+    };
+
+    try {
+      await apiClient.post('/employees', employeeData);
+      alert('직원이 성공적으로 추가되었습니다.');
+      setIsAdding(false);
+      setNewEmployee({ name: '', pin: '', role: roles[1], hourlyWage: '' });
+      const response = await apiClient.get('/employees'); // Re-fetch
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('Error adding employee:', error);
+      alert(`직원 추가에 실패했습니다: ${error.response?.data?.message || '오류가 발생했습니다.'}`);
+    }
+  };
+  
+  if (loading) {
+    return <div className="management-container"><h1>로딩 중...</h1></div>;
+  }
+
+  if (error) {
+    return (
+      <div className="management-container">
+        <header className="management-header">
+          <h1>직원 관리</h1>
+          <div>
+            <button onClick={() => navigate('/pos')}>POS 돌아가기</button>
+            <button onClick={handleLogout} className="logout-button">로그아웃</button>
+          </div>
+        </header>
+        <div className="error-message">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="management-container">
-      <h1>직원 관리</h1>
+      <header className="management-header">
+        <h1>직원 관리</h1>
+        <div>
+          <button onClick={() => navigate('/pos')}>POS 돌아가기</button>
+          <button onClick={handleLogout} className="logout-button">로그아웃</button>
+        </div>
+      </header>
+      
       <div className="actions">
         <button onClick={() => setIsAdding(!isAdding)}>
           {isAdding ? '취소' : '새 직원 추가'}
@@ -81,7 +158,7 @@ function EmployeeManagementPage() {
             <li key={emp.id} className="data-list-item">
               <span>{emp.name}</span>
               <span>{emp.pin}</span>
-              <span>{emp.role}</span>
+              <span>{emp.role.replace('ROLE_', '')}</span>
               <span>{emp.hourlyWage.toLocaleString()}원</span>
             </li>
           ))}

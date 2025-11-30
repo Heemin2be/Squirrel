@@ -78,6 +78,7 @@
   padding: 15px;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  position: relative; /* Added for overlay positioning */
 }
 
 .menu-card:hover {
@@ -85,7 +86,39 @@
   box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
 
-.menu-card img {
+.menu-card.sold-out {
+    pointer-events: none; /* Disable clicks on sold-out items */
+    cursor: not-allowed;
+}
+
+.menu-card.sold-out:hover {
+    transform: none; /* Prevent hover effect when sold out */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Keep original shadow */
+}
+
+.menu-card.sold-out .menu-card-content {
+    filter: grayscale(100%); /* Apply grayscale filter to content */
+}
+
+.sold-out-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
+    color: #cc0000; /* Less saturated red text */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.5em; /* Slightly smaller font size */
+    font-weight: bold;
+    border-radius: 8px;
+    z-index: 10; /* Ensure it's above other content */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Add text shadow for prominence */
+}
+
+.menu-card-content img { /* Adjusted selector */
   width: 100%;
   height: 120px;
   object-fit: cover;
@@ -93,12 +126,12 @@
   background-color: #eee;
 }
 
-.menu-card h3 {
+.menu-card-content h3 { /* Adjusted selector */
   margin: 10px 0 5px;
   font-size: 18px;
 }
 
-.menu-card p {
+.menu-card-content p { /* Adjusted selector */
   margin: 0;
   color: #555;
   font-weight: bold;

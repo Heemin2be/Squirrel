@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
+import apiClient from './api/axios';
 import KioskPage from './pages/KioskPage';
 import PosPage from './pages/PosPage';
 import SalesStatisticsPage from './pages/SalesStatisticsPage';
@@ -15,12 +16,21 @@ function App() {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [targetPath, setTargetPath] = useState('');
 
-  const handlePinSubmit = (pin) => {
-    if (pin === '0000') { // Hardcoded admin PIN
+  const handlePinSubmit = async (pin) => {
+    try {
+      const response = await apiClient.post('/auth/login', { pin });
+      const { accessToken, employeeName, role } = response.data;
+
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('employeeName', employeeName);
+      localStorage.setItem('role', role);
+
+      alert(`${employeeName}님, 환영합니다.`);
       setIsPinModalOpen(false);
       navigate(targetPath);
-    } else {
-      alert('잘못된 PIN 번호입니다.');
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert('로그인에 실패했습니다. PIN 번호를 확인해주세요.');
     }
   };
 
@@ -35,7 +45,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Root />} />
           <Route path="/kiosk" element={<KioskStartPage />} />
-          <Route path="/kiosk-order" element={<KioskPage />} />
+          <Route path="/kiosk-order/:tableId" element={<KioskPage />} />
           <Route path="/pos" element={<PosPage onRequirePin={handleRequirePin} />} />
           {/* <Route path="/checkout" element={<CheckoutPage />} /> Removed CheckoutPage */}
           <Route path="/pos/sales" element={<SalesStatisticsPage />} />
